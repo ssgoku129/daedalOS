@@ -8,6 +8,11 @@ type Bookmark = {
 
 export const bookmarks: Bookmark[] = [
   {
+    icon: "/System/Icons/Favicons/JamesMorgan.webp",
+    name: "James Morgan IT Solutions",
+    url: "https://jamesmorgan.ca",
+  },
+  {
     icon: "/System/Icons/Favicons/google.webp",
     name: "Google",
     url: "https://www.google.com/webhp?igu=1",
@@ -44,4 +49,4 @@ export const bookmarks: Bookmark[] = [
   },
 ];
 
-export const HOME_PAGE = "https://www.google.com/webhp?igu=1";
+export const HOME_PAGE = "https://jamesmorgan.ca";
