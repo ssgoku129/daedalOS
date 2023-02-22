@@ -8,7 +8,7 @@ type Bookmark = {
 
 export const bookmarks: Bookmark[] = [
   {
-    icon: "/System/Icons/Favicons/JamesMorgan.webp",
+    icon: "/System/Icons/Favicons/google.webp",
     name: "James Morgan IT Solutions",
     url: "https://jamesmorgan.ca",
   },
