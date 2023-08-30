@@ -9,6 +9,11 @@ type Bookmark = {
 export const bookmarks: Bookmark[] = [
   {
     icon: "/System/Icons/Favicons/google.webp",
+    name: "jamesmorgan.ca",
+    url: "https://jamesmorgan.ca",
+  },
+  {
+    icon: "/System/Icons/Favicons/google.webp",
     name: "Google",
     url: "https://www.google.com/webhp?igu=1",
   },
