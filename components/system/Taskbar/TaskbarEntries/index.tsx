@@ -1,7 +1,8 @@
-import StyledTaskbarEntries from "components/system/Taskbar/TaskbarEntries/StyledTaskbarEntries";
-import { useProcesses } from "contexts/process";
 import { AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import { memo } from "react";
+import { useProcesses } from "contexts/process";
+import StyledTaskbarEntries from "components/system/Taskbar/TaskbarEntries/StyledTaskbarEntries";
 
 const TaskbarEntry = dynamic(
   () => import("components/system/Taskbar/TaskbarEntry")
@@ -25,4 +26,4 @@ const TaskbarEntries: FC = () => {
   );
 };
 
-export default TaskbarEntries;
+export default memo(TaskbarEntries);

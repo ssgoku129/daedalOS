@@ -1,13 +1,13 @@
+import { basename, dirname } from "path";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
-import StyledButton from "components/system/Dialogs/Transfer/StyledButton";
+import StyledButton from "components/system/Dialogs/StyledButton";
 import StyledTransfer from "components/system/Dialogs/Transfer/StyledTransfer";
 import type {
   FileReaders,
   ObjectReaders,
 } from "components/system/Dialogs/Transfer/useTransferDialog";
 import { useProcesses } from "contexts/process";
-import { basename, dirname } from "path";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ONE_TIME_PASSIVE_EVENT } from "utils/constants";
 import { haltEvent } from "utils/functions";
 
@@ -85,6 +85,7 @@ const Transfer: FC<ComponentProcessProps> = ({ id }) => {
         },
         ONE_TIME_PASSIVE_EVENT
       );
+      // eslint-disable-next-line unicorn/prefer-blob-reading-methods
       reader.readAsArrayBuffer(file);
     },
     [completeTransfer]

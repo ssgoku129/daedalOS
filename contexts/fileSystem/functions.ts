@@ -1,9 +1,9 @@
+import { join } from "path";
 import type HTTPRequest from "browserfs/dist/node/backend/HTTPRequest";
 import type IndexedDBFileSystem from "browserfs/dist/node/backend/IndexedDB";
 import type OverlayFS from "browserfs/dist/node/backend/OverlayFS";
-import type { RootFileSystem } from "contexts/fileSystem/useAsyncFs";
 import { openDB } from "idb";
-import { join } from "path";
+import type { RootFileSystem } from "contexts/fileSystem/useAsyncFs";
 import index from "public/.index/fs.9p.json";
 import { FS_HANDLES, ONE_TIME_PASSIVE_EVENT } from "utils/constants";
 
@@ -15,7 +15,7 @@ type FS9PV3 = [
   number,
   number,
   number,
-  FS9PV3[] | string
+  FS9PV3[] | string,
 ];
 type FS9PV4 = [string, number, number, FS9PV4[] | string | undefined];
 type FS9P = {
@@ -50,6 +50,8 @@ const IDX_GID = 0;
 // eslint-disable-next-line unicorn/no-null
 const FILE_ENTRY = null;
 const fsroot = index.fsroot as FS9PV4[];
+
+export const UNKNOWN_STATE_CODES = new Set(["EIO", "ENOENT"]);
 
 export const get9pModifiedTime = (path: string): number => {
   let fsPath = fsroot;
@@ -117,19 +119,28 @@ export const fs9pV4ToV3 = (): FS9P =>
 
 export const supportsIndexedDB = (): Promise<boolean> =>
   new Promise((resolve) => {
-    const db = window.indexedDB.open("");
+    const db = window.indexedDB.open("browserfs");
 
     db.addEventListener("error", () => resolve(false), ONE_TIME_PASSIVE_EVENT);
     db.addEventListener(
       "success",
-      () => {
+      ({ target }) => {
         resolve(true);
 
         try {
           db.result.close();
-          window.indexedDB.deleteDatabase("");
         } catch {
-          // Ignore errors to close/delete the test database
+          // Ignore errors to close database
+        }
+
+        const { objectStoreNames } = (target as IDBOpenDBRequest)?.result || {};
+
+        if (objectStoreNames?.length === 0) {
+          try {
+            window.indexedDB.deleteDatabase("browserfs");
+          } catch {
+            // Ignore errors to delete database
+          }
         }
       },
       ONE_TIME_PASSIVE_EVENT
@@ -149,9 +160,11 @@ export const getFileSystemHandles = async (): Promise<FileSystemHandles> => {
   const db = await getKeyValStore();
 
   return (
-    (await (<Promise<FileSystemHandles>>(
-      db.get(KEYVAL_STORE_NAME, FS_HANDLES)
-    ))) || (Object.create(null) as FileSystemHandles)
+    (await (db.get(
+      KEYVAL_STORE_NAME,
+      FS_HANDLES
+    ) as Promise<FileSystemHandles>)) ||
+    (Object.create(null) as FileSystemHandles)
   );
 };
 

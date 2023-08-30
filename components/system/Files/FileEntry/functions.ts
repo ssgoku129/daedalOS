@@ -1,4 +1,6 @@
+import { join } from "path";
 import type { FSModule } from "browserfs/dist/node/core/FS";
+import ini from "ini";
 import { monacoExtensions } from "components/apps/MonacoEditor/extensions";
 import extensions from "components/system/Files/FileEntry/extensions";
 import type { FileInfo } from "components/system/Files/FileEntry/useFileInfo";
@@ -6,8 +8,6 @@ import type { FileStat } from "components/system/Files/FileManager/functions";
 import { get9pModifiedTime } from "contexts/fileSystem/functions";
 import type { RootFileSystem } from "contexts/fileSystem/useAsyncFs";
 import processDirectory from "contexts/process/directory";
-import ini from "ini";
-import { extname, join } from "path";
 import {
   AUDIO_FILE_EXTENSIONS,
   BASE_2D_CONTEXT_OPTIONS,
@@ -20,6 +20,7 @@ import {
   ICON_GIF_FPS,
   ICON_GIF_SECONDS,
   IMAGE_FILE_EXTENSIONS,
+  MAX_ICON_SIZE,
   MOUNTED_FOLDER_ICON,
   MP3_MIME_TYPE,
   NEW_FOLDER_ICON,
@@ -32,6 +33,7 @@ import {
   SYSTEM_PATHS,
   TIFF_IMAGE_FORMATS,
   UNKNOWN_ICON_PATH,
+  VIDEO_FALLBACK_MIME_TYPE,
   VIDEO_FILE_EXTENSIONS,
   YT_ICON_CACHE,
 } from "utils/constants";
@@ -39,10 +41,12 @@ import {
   blobToBase64,
   bufferToUrl,
   decodeJxl,
+  getExtension,
   getGifJs,
   getHtmlToImage,
   imageToBufferUrl,
   imgDataToBuffer,
+  isSafari,
   isYouTubeUrl,
 } from "utils/functions";
 
@@ -92,7 +96,7 @@ export const getIconFromIni = (
     );
   });
 
-export const getDefaultFileViewer = (extension: string): string => {
+const getDefaultFileViewer = (extension: string): string => {
   if (AUDIO_FILE_EXTENSIONS.has(extension)) return "VideoPlayer";
   if (VIDEO_FILE_EXTENSIONS.has(extension)) return "VideoPlayer";
   if (IMAGE_FILE_EXTENSIONS.has(extension)) return "Photos";
@@ -120,6 +124,61 @@ export const getProcessByFileExtension = (extension: string): string => {
       : [getDefaultFileViewer(extension)];
 
   return defaultProcess;
+};
+
+export const getMimeType = (url: string): string => {
+  switch (getExtension(url)) {
+    case ".ani":
+    case ".cur":
+    case ".ico":
+      return "image/vnd.microsoft.icon";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".json":
+      return "application/json";
+    case ".html":
+    case ".htm":
+    case ".whtml":
+      return "text/html";
+    case ".m3u":
+    case ".m3u8":
+      return "application/x-mpegURL";
+    case ".m4v":
+    case ".mkv":
+    case ".mov":
+    case ".mp4":
+      return "video/mp4";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".oga":
+      return "audio/ogg";
+    case ".ogg":
+    case ".ogm":
+    case ".ogv":
+      return "video/ogg";
+    case ".pdf":
+      return "application/pdf";
+    case ".png":
+      return "image/png";
+    case ".md":
+    case ".txt":
+      return "text/plain";
+    case ".wav":
+      return "audio/wav";
+    case ".webm":
+      return "video/webm";
+    case ".webp":
+      return "image/webp";
+    case ".xml":
+      return "application/xml";
+    case ".wsz":
+    case ".jsdos":
+    case ".zip":
+      return "application/zip";
+    default:
+      return "";
+  }
 };
 
 export const getShortcutInfo = (contents: Buffer): FileInfo => {
@@ -207,7 +266,7 @@ export const getInfoWithoutExtension = (
   rootFs: RootFileSystem,
   path: string,
   isDirectory: boolean,
-  useNewFolderIcon: boolean,
+  hasNewFolderIcon: boolean,
   callback: (value: FileInfo) => void
 ): void => {
   if (isDirectory) {
@@ -221,7 +280,7 @@ export const getInfoWithoutExtension = (
       if (rootFs?.mntMap[path]?.getName() === "FileSystemAccess") {
         return MOUNTED_FOLDER_ICON;
       }
-      if (useNewFolderIcon) return NEW_FOLDER_ICON;
+      if (hasNewFolderIcon) return NEW_FOLDER_ICON;
       return FOLDER_ICON;
     };
     const folderIcon = getFolderIcon();
@@ -246,7 +305,7 @@ export const getInfoWithoutExtension = (
   }
 };
 
-const getFirstAniImage = async (
+export const getFirstAniImage = async (
   imageBuffer: Buffer
 ): Promise<Buffer | undefined> => {
   const { parseAni } = await import("ani-cursor/dist/parser");
@@ -287,15 +346,15 @@ export const getInfoWithExtension = (
   switch (extension) {
     case SHORTCUT_EXTENSION:
       fs.readFile(path, (error, contents = Buffer.from("")) => {
-        subIcons.push(SHORTCUT_ICON);
-
         if (error) {
           getInfoByFileExtension();
           return;
         }
 
         const { comment, icon, pid, url } = getShortcutInfo(contents);
-        const urlExt = extname(url).toLowerCase();
+        const urlExt = getExtension(url);
+
+        if (pid !== "ExternalURL") subIcons.push(SHORTCUT_ICON);
 
         if (pid === "FileExplorer" && !icon) {
           const getIcon = (): void => {
@@ -508,13 +567,28 @@ export const getInfoWithExtension = (
             containerElement.style.padding = "32px";
             containerElement.style.backgroundColor = "#fff";
             containerElement.style.zIndex = "-1";
+            containerElement.style.overflow = "hidden";
+            containerElement.style.opacity = "0";
+            containerElement.style.userSelect = "none";
+            containerElement.style.webkitUserSelect = "none";
 
             containerElement.innerHTML = contents.toString();
 
             document.body.append(containerElement);
-            const documentImage = await htmlToImage?.toPng(containerElement, {
-              skipAutoScale: true,
-            });
+
+            let documentImage: string | undefined;
+
+            try {
+              documentImage = await htmlToImage?.toPng(containerElement, {
+                skipAutoScale: true,
+                style: {
+                  opacity: "1",
+                },
+              });
+            } catch {
+              // Ignore failure to captrure
+            }
+
             containerElement.remove();
 
             if (documentImage && documentImage.length > SMALLEST_PNG_SIZE) {
@@ -576,6 +650,10 @@ export const getInfoWithExtension = (
             if (!error) {
               const video = document.createElement("video");
               const canvas = document.createElement("canvas");
+              const context = canvas.getContext("2d", {
+                ...BASE_2D_CONTEXT_OPTIONS,
+                willReadFrequently: true,
+              });
               const gif = await getGifJs();
               let framesRemaining = ICON_GIF_FPS * ICON_GIF_SECONDS;
               const getFrame = (
@@ -583,48 +661,8 @@ export const getInfoWithExtension = (
                 firstFrame: boolean
               ): Promise<void> =>
                 new Promise((resolve) => {
-                  video.addEventListener(
-                    "canplaythrough",
-                    () => {
-                      const context = canvas.getContext("2d", {
-                        ...BASE_2D_CONTEXT_OPTIONS,
-                        willReadFrequently: true,
-                      });
-
-                      if (!context || !canvas.width || !canvas.height) return;
-
-                      context.drawImage(
-                        video,
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height
-                      );
-                      const imageData = context.getImageData(
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height
-                      );
-                      gif.addFrame(imageData, {
-                        copy: true,
-                        delay: 100,
-                      });
-                      framesRemaining -= 1;
-
-                      if (framesRemaining === 0) {
-                        gif
-                          .on("finished", (blob) =>
-                            blobToBase64(blob).then(getInfoByFileExtension)
-                          )
-                          .render();
-                      }
-
-                      resolve();
-                    },
-                    { signal, ...ONE_TIME_PASSIVE_EVENT }
-                  );
                   video.currentTime = second;
+
                   if ("seekToNextFrame" in video) {
                     (video as VideoElementWithSeek)
                       .seekToNextFrame?.()
@@ -634,13 +672,50 @@ export const getInfoWithExtension = (
                   } else if (firstFrame) {
                     video.load();
                   }
+
+                  const processFrame = (): void => {
+                    if (!context || !canvas.width || !canvas.height) return;
+
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    gif.addFrame(
+                      context.getImageData(0, 0, canvas.width, canvas.height),
+                      { copy: true, delay: 100 }
+                    );
+                    framesRemaining -= 1;
+
+                    if (framesRemaining === 0) {
+                      gif
+                        .on("finished", (blob) =>
+                          blobToBase64(blob).then(getInfoByFileExtension)
+                        )
+                        .render();
+                    }
+
+                    resolve();
+                  };
+
+                  if ("requestVideoFrameCallback" in video) {
+                    video.requestVideoFrameCallback(processFrame);
+                  } else {
+                    (video as HTMLVideoElement).addEventListener(
+                      "canplaythrough",
+                      processFrame,
+                      { signal, ...ONE_TIME_PASSIVE_EVENT }
+                    );
+                  }
                 });
 
               video.addEventListener(
                 "loadeddata",
                 () => {
-                  canvas.height = video.videoHeight;
-                  canvas.width = video.videoWidth;
+                  canvas.height =
+                    video.videoHeight > video.videoWidth
+                      ? MAX_ICON_SIZE
+                      : (MAX_ICON_SIZE * video.videoHeight) / video.videoWidth;
+                  canvas.width =
+                    video.videoWidth > video.videoHeight
+                      ? MAX_ICON_SIZE
+                      : (MAX_ICON_SIZE * video.videoWidth) / video.videoHeight;
 
                   const capturePoints = [
                     video.duration / 4,
@@ -672,7 +747,13 @@ export const getInfoWithExtension = (
                 },
                 { signal, ...ONE_TIME_PASSIVE_EVENT }
               );
-              video.src = bufferToUrl(contents);
+
+              video.src = bufferToUrl(
+                contents,
+                isSafari()
+                  ? getMimeType(path) || VIDEO_FALLBACK_MIME_TYPE
+                  : undefined
+              );
             }
           })
         );

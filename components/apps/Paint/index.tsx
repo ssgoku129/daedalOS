@@ -1,3 +1,5 @@
+import { basename, dirname, join } from "path";
+import { useCallback, useEffect, useRef, useState } from "react";
 import StyledPaint from "components/apps/Paint/StyledPaint";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import StyledLoading from "components/system/Files/FileManager/StyledLoading";
@@ -7,8 +9,6 @@ import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import { useSession } from "contexts/session";
 import type { WallpaperFit } from "contexts/session/types";
-import { basename, dirname, join } from "path";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DESKTOP_PATH,
   IFRAME_CONFIG,
@@ -19,6 +19,9 @@ import {
 type JsPaint = {
   close: () => void;
   file_new: () => void;
+  onunhandledrejection: (
+    error: Error & { reason: { message: string } }
+  ) => void;
   open_from_file: (file: File, fileHandle: string) => void;
   storage_quota_exceeded: () => void;
   systemHooks: {
@@ -64,7 +67,6 @@ const Paint: FC<ComponentProcessProps> = ({ id }) => {
     [setWallpaper, writeFile]
   );
   const { onDragOver, onDrop } = useFileDrop({ id });
-  const style = useMemo(() => ({ opacity: loaded ? 1 : 0 }), [loaded]);
 
   useEffect(() => {
     prependFileToTitle("Untitled");
@@ -152,6 +154,19 @@ const Paint: FC<ComponentProcessProps> = ({ id }) => {
   useEffect(() => {
     if (jsPaintInstance && url) {
       readFile(url).then((buffer) => {
+        // eslint-disable-next-line prefer-destructuring
+        const onunhandledrejection = jsPaintInstance.onunhandledrejection;
+
+        jsPaintInstance.onunhandledrejection = (error) => {
+          onunhandledrejection?.(error);
+
+          if (
+            error?.reason?.message ===
+            "either options.data or options.file or options.filePath must be passed"
+          ) {
+            prependFileToTitle("Untitled");
+          }
+        };
         jsPaintInstance.open_from_file(new File([buffer], url), url);
         prependFileToTitle(basename(url));
       });
@@ -159,7 +174,7 @@ const Paint: FC<ComponentProcessProps> = ({ id }) => {
   }, [jsPaintInstance, prependFileToTitle, readFile, url]);
 
   return (
-    <StyledPaint>
+    <StyledPaint $loaded={loaded}>
       {!loaded && <StyledLoading className="loading" />}
       <iframe
         ref={iframeRef}
@@ -167,7 +182,6 @@ const Paint: FC<ComponentProcessProps> = ({ id }) => {
         id="jspaint-iframe"
         onLoad={() => setLoaded(true)}
         src={paintSrc}
-        style={style}
         title={id}
         width="100%"
         {...IFRAME_CONFIG}

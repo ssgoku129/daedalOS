@@ -1,3 +1,4 @@
+import { basename, dirname, extname, join } from "path";
 import type Stats from "browserfs/dist/node/core/node_fs_stats";
 import type {
   FileReaders,
@@ -5,12 +6,11 @@ import type {
 } from "components/system/Dialogs/Transfer/useTransferDialog";
 import { getModifiedTime } from "components/system/Files/FileEntry/functions";
 import type {
-  CompleteAction,
   Files,
+  NewPath,
 } from "components/system/Files/FileManager/useFolder";
 import { COMPLETE_ACTION } from "components/system/Files/FileManager/useFolder";
 import type { SortBy } from "components/system/Files/FileManager/useSortBy";
-import { basename, dirname, extname, join } from "path";
 import { ONE_TIME_PASSIVE_EVENT, ROOT_SHORTCUT } from "utils/constants";
 import { haltEvent } from "utils/functions";
 
@@ -131,11 +131,7 @@ export const iterateFileName = (name: string, iteration: number): string => {
 export const createFileReaders = async (
   files: DataTransferItemList | FileList | never[],
   directory: string,
-  callback: (
-    fileName: string,
-    buffer?: Buffer,
-    completeAction?: CompleteAction
-  ) => void
+  callback: NewPath
 ): Promise<FileReaders> => {
   const fileReaders: FileReaders = [];
   const addFile = (file: File, subFolder = ""): void => {
@@ -203,33 +199,25 @@ type EventData = {
 export const getEventData = (
   event: DragEvent | InputChangeEvent | never[] | React.DragEvent
 ): EventData => {
+  const dataTransfer =
+    (event as React.DragEvent).nativeEvent?.dataTransfer ||
+    (event as DragEvent).dataTransfer;
   let files =
-    (event as InputChangeEvent).target?.files ||
-    (event as React.DragEvent).nativeEvent?.dataTransfer?.items ||
-    (event as DragEvent).dataTransfer?.items ||
-    [];
+    (event as InputChangeEvent).target?.files || dataTransfer?.items || [];
+  const text = dataTransfer?.getData("application/json");
 
-  if (files instanceof DataTransferItemList) {
-    files = [...files].filter(
+  if (Array.isArray(files)) {
+    files = [...(files as unknown as DataTransferItemList)].filter(
       (item) => !("kind" in item) || item.kind === "file"
     ) as unknown as DataTransferItemList;
   }
-
-  const text =
-    files.length > 0
-      ? ""
-      : (event as React.DragEvent).dataTransfer?.getData("application/json");
 
   return { files, text };
 };
 
 export const handleFileInputEvent = (
   event: InputChangeEvent | React.DragEvent,
-  callback: (
-    fileName: string,
-    buffer?: Buffer,
-    completeAction?: CompleteAction
-  ) => Promise<void>,
+  callback: NewPath,
   directory: string,
   openTransferDialog: (fileReaders: FileReaders | ObjectReaders) => void,
   hasUpdateId = false
@@ -241,6 +229,9 @@ export const handleFileInputEvent = (
   if (text) {
     try {
       const filePaths = JSON.parse(text) as string[];
+
+      if (!Array.isArray(filePaths) || filePaths.length === 0) return;
+
       const isSingleFile = filePaths.length === 1;
       const objectReaders = filePaths.map((filePath) => {
         let aborted = false;
@@ -272,6 +263,10 @@ export const handleFileInputEvent = (
         if (hasUpdateId || singleFile.directory === singleFile.name) return;
       }
 
+      if (filePaths.every((filePath) => dirname(filePath) === directory)) {
+        return;
+      }
+
       openTransferDialog(objectReaders);
     } catch {
       // Failed to parse text data to JSON
@@ -301,3 +296,6 @@ export const findPathsRecursive = async (
 
   return pathArrays.flat();
 };
+
+export const removeInvalidFilenameCharacters = (name = ""): string =>
+  name.replace(/["*/:<>?\\|]/g, "");

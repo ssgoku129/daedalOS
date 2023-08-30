@@ -1,5 +1,10 @@
+import { basename, dirname, extname, isAbsolute, join } from "path";
+import { useCallback, useEffect, useRef } from "react";
+import { useTheme } from "styled-components";
+import type UAParser from "ua-parser-js";
+import type { Terminal } from "xterm";
 import { colorAttributes, rgbAnsi } from "components/apps/Terminal/color";
-import { config, PI_ASCII } from "components/apps/Terminal/config";
+import { PI_ASCII, config } from "components/apps/Terminal/config";
 import {
   aliases,
   autoComplete,
@@ -23,6 +28,7 @@ import {
   displayLicense,
   displayVersion,
 } from "components/apps/Terminal/useTerminal";
+import { resourceAliasMap } from "components/system/Dialogs/Run";
 import extensions from "components/system/Files/FileEntry/extensions";
 import {
   getModifiedTime,
@@ -34,26 +40,25 @@ import { requestPermission, resetStorage } from "contexts/fileSystem/functions";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
 import { useProcessesRef } from "hooks/useProcessesRef";
-import { basename, dirname, extname, isAbsolute, join } from "path";
-import { useCallback, useEffect, useRef } from "react";
-import { useTheme } from "styled-components";
-import type UAParser from "ua-parser-js";
 import {
   DEFAULT_LOCALE,
   DESKTOP_PATH,
   HIGH_PRIORITY_REQUEST,
-  isFileSystemSupported,
   MILLISECONDS_IN_SECOND,
   PACKAGE_DATA,
   SHORTCUT_EXTENSION,
 } from "utils/constants";
 import { transcode } from "utils/ffmpeg";
-import { getTZOffsetISOString, loadFiles } from "utils/functions";
+import {
+  getExtension,
+  getTZOffsetISOString,
+  isFileSystemMappingSupported,
+  loadFiles,
+} from "utils/functions";
 import { convert } from "utils/imagemagick";
 import { getIpfsFileName, getIpfsResource } from "utils/ipfs";
 import { fullSearch } from "utils/search";
 import { convertSheet } from "utils/sheetjs";
-import type { Terminal } from "xterm";
 
 const COMMAND_NOT_SUPPORTED = "The system does not support the command.";
 const FILE_NOT_FILE = "The system cannot find the file specified.";
@@ -283,8 +288,7 @@ const useCommandInterpreter = (
           if (commandPath) {
             const fullPath = await getFullPath(commandPath);
 
-            if (await exists(fullPath)) {
-              await deletePath(fullPath);
+            if ((await exists(fullPath)) && (await deletePath(fullPath))) {
               updateFile(fullPath, true);
             }
           }
@@ -545,7 +549,11 @@ const useCommandInterpreter = (
         }
         case "kill":
         case "taskkill": {
-          const [processName] = commandArgs;
+          const [processId] = commandArgs;
+          const processName =
+            Number.isNaN(processId) || processesRef.current[processId]
+              ? processId
+              : Object.keys(processesRef.current)[Number(processId)];
 
           if (processesRef.current[processName]) {
             closeWithTransition(processName);
@@ -576,7 +584,7 @@ const useCommandInterpreter = (
         }
         case "mount":
           if (localEcho) {
-            if (isFileSystemSupported()) {
+            if (isFileSystemMappingSupported()) {
               try {
                 const mappedFolder = await mapFs(cd.current);
 
@@ -617,9 +625,10 @@ const useCommandInterpreter = (
                 );
               }
 
-              await rename(fullSourcePath, fullDestinationPath);
-              updateFile(fullSourcePath, true);
-              updateFile(fullDestinationPath);
+              if (await rename(fullSourcePath, fullDestinationPath)) {
+                updateFile(fullSourcePath, true);
+                updateFile(fullDestinationPath);
+              }
             } else {
               localEcho?.println(SYNTAX_ERROR);
             }
@@ -794,13 +803,13 @@ const useCommandInterpreter = (
         case "tasklist":
           printTable(
             [
-              ["PID", 30],
-              ["Title", 25],
+              ["Image Name", 25],
+              ["PID", 8],
+              ["Title", 16],
             ],
-            Object.entries(processesRef.current).map(([pid, { title }]) => [
-              pid,
-              title,
-            ]),
+            Object.entries(processesRef.current).map(
+              ([pid, { title }], index) => [pid, index.toString(), title]
+            ),
             localEcho
           );
           break;
@@ -813,12 +822,13 @@ const useCommandInterpreter = (
             if (await exists(fullSourcePath)) {
               const code = await readFile(fullSourcePath);
 
-              await runPython(code.toString(), localEcho);
+              if (code.length > 0) {
+                await runPython(code.toString(), localEcho);
+              }
             } else {
-              await runPython(
-                command.slice(command.indexOf(" ") + 1),
-                localEcho
-              );
+              const [, code = "version"] = command.split(" ");
+
+              await runPython(code, localEcho);
             }
           }
           break;
@@ -859,9 +869,22 @@ const useCommandInterpreter = (
           localEcho?.println(displayVersion());
           break;
         case "wapm":
-        case "wax":
-          if (localEcho) await loadWapm(commandArgs, localEcho);
+        case "wax": {
+          if (!localEcho) break;
+
+          const [file] = commandArgs;
+          const fullSourcePath = await getFullPath(file);
+
+          await loadWapm(
+            commandArgs,
+            localEcho,
+            fullSourcePath.endsWith(".wasm") && (await exists(fullSourcePath))
+              ? await readFile(fullSourcePath)
+              : undefined
+          );
+
           break;
+        }
         case "weather":
         case "wttr": {
           const response = await fetch(
@@ -916,9 +939,10 @@ const useCommandInterpreter = (
         }
         default:
           if (baseCommand) {
-            const pid = Object.keys(processDirectory).find(
-              (process) => process.toLowerCase() === lcBaseCommand
-            );
+            const pid =
+              Object.keys(processDirectory).find(
+                (process) => process.toLowerCase() === lcBaseCommand
+              ) || resourceAliasMap[lcBaseCommand];
 
             if (pid) {
               const [file] = commandArgs;
@@ -928,29 +952,43 @@ const useCommandInterpreter = (
                 url:
                   file && fullPath && (await exists(fullPath)) ? fullPath : "",
               });
-            } else if (await exists(baseCommand)) {
-              const fileExtension = extname(baseCommand).toLowerCase();
-              const { command: extCommand = "" } =
-                extensions[fileExtension] || {};
-
-              if (extCommand) {
-                await commandInterpreter(`${extCommand} ${baseCommand}`);
-              } else {
-                let basePid = "";
-                let baseUrl = baseCommand;
-
-                if (fileExtension === SHORTCUT_EXTENSION) {
-                  ({ pid: basePid, url: baseUrl } = getShortcutInfo(
-                    await readFile(baseCommand)
-                  ));
-                } else {
-                  basePid = getProcessByFileExtension(fileExtension);
-                }
-
-                if (basePid) open(basePid, { url: baseUrl });
-              }
             } else {
-              localEcho?.println(unknownCommand(baseCommand));
+              const baseFileExists = await exists(baseCommand);
+
+              if (
+                baseFileExists ||
+                (await exists(join(cd.current, baseCommand)))
+              ) {
+                const fileExtension = getExtension(baseCommand);
+                const { command: extCommand = "" } =
+                  extensions[fileExtension] || {};
+
+                if (extCommand) {
+                  await commandInterpreter(
+                    `${extCommand} ${baseCommand}${
+                      commandArgs.length > 0 ? ` ${commandArgs.join(" ")}` : ""
+                    }`
+                  );
+                } else {
+                  const fullFilePath = baseFileExists
+                    ? baseCommand
+                    : join(cd.current, baseCommand);
+                  let basePid = "";
+                  let baseUrl = fullFilePath;
+
+                  if (fileExtension === SHORTCUT_EXTENSION) {
+                    ({ pid: basePid, url: baseUrl } = getShortcutInfo(
+                      await readFile(fullFilePath)
+                    ));
+                  } else {
+                    basePid = getProcessByFileExtension(fileExtension);
+                  }
+
+                  if (basePid) open(basePid, { url: baseUrl });
+                }
+              } else {
+                localEcho?.println(unknownCommand(baseCommand));
+              }
             }
           }
       }

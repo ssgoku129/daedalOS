@@ -1,7 +1,8 @@
+import { basename } from "path";
+import { useCallback, useEffect, useState } from "react";
 import {
   config,
   CONTROL_BAR_HEIGHT,
-  getMimeType,
   VideoResizeKey,
   YT_TYPE,
 } from "components/apps/VideoPlayer/config";
@@ -9,12 +10,13 @@ import type {
   SourceObjectWithUrl,
   VideoPlayer,
 } from "components/apps/VideoPlayer/types";
+import type { ContainerHookProps } from "components/system/Apps/AppContainer";
+import { getMimeType } from "components/system/Files/FileEntry/functions";
 import useTitle from "components/system/Window/useTitle";
 import useWindowSize from "components/system/Window/useWindowSize";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
-import { basename } from "path";
-import { useCallback, useEffect, useState } from "react";
+import { VIDEO_FALLBACK_MIME_TYPE } from "utils/constants";
 import {
   bufferToUrl,
   cleanUpBufferUrl,
@@ -25,13 +27,13 @@ import {
   viewWidth,
 } from "utils/functions";
 
-const useVideoPlayer = (
-  id: string,
-  url: string,
-  containerRef: React.MutableRefObject<HTMLDivElement | null>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
-  loading: boolean
-): void => {
+const useVideoPlayer = ({
+  containerRef,
+  id,
+  loading,
+  setLoading,
+  url,
+}: ContainerHookProps): void => {
   const { readFile } = useFileSystem();
   const {
     linkElement,
@@ -55,7 +57,7 @@ const useVideoPlayer = (
     cleanUpSource();
 
     const isYT = isYouTubeUrl(url);
-    const type = isYT ? YT_TYPE : getMimeType(url);
+    const type = isYT ? YT_TYPE : getMimeType(url) || VIDEO_FALLBACK_MIME_TYPE;
     const src = isYT
       ? url
       : bufferToUrl(await readFile(url), isSafari() ? type : undefined);
@@ -93,11 +95,16 @@ const useVideoPlayer = (
       };
 
       videoElement.addEventListener("dblclick", toggleFullscreen);
-      videoElement.addEventListener("mousewheel", (event) => {
-        videoPlayer.volume(
-          videoPlayer.volume() + ((event as WheelEvent).deltaY > 0 ? -0.1 : 0.1)
-        );
-      });
+      videoElement.addEventListener(
+        "mousewheel",
+        (event) => {
+          videoPlayer.volume(
+            videoPlayer.volume() +
+              ((event as WheelEvent).deltaY > 0 ? -0.1 : 0.1)
+          );
+        },
+        { passive: true }
+      );
       containerRef.current
         ?.closest("section")
         ?.addEventListener("keydown", ({ key, altKey, ctrlKey }) => {
@@ -137,16 +144,34 @@ const useVideoPlayer = (
       if (!isYouTubeUrl(url)) linkElement(id, "peekElement", videoElement);
     });
   }, [containerRef, id, linkElement, setLoading, updateWindowSize, url]);
+  const maybeHideControlbar = useCallback(
+    (type?: string): void => {
+      const controlBar =
+        containerRef.current?.querySelector(".vjs-control-bar");
+
+      if (controlBar instanceof HTMLElement) {
+        if (type === YT_TYPE) {
+          controlBar.classList.add("no-interaction");
+        } else {
+          controlBar.classList.remove("no-interaction");
+        }
+      }
+    },
+    [containerRef]
+  );
   const loadVideo = useCallback(async () => {
     if (player && url) {
       try {
-        player.src(await getSource());
+        const source = await getSource();
+
+        player.src(source);
+        maybeHideControlbar(source.type);
         prependFileToTitle(isYouTubeUrl(url) ? "YouTube" : basename(url));
       } catch {
         // Ignore player errors
       }
     }
-  }, [getSource, player, prependFileToTitle, url]);
+  }, [getSource, maybeHideControlbar, player, prependFileToTitle, url]);
 
   useEffect(() => {
     if (loading && !player) {

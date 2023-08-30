@@ -69,7 +69,7 @@ const types = {
   },
   Music: {
     icon: "audio",
-    process: ["Webamp"],
+    process: ["Webamp", "VideoPlayer"],
   },
   PdfDocument: {
     icon: "pdf",
@@ -89,6 +89,12 @@ const types = {
   SvgFile: {
     process: ["Photos", ...TEXT_EDITORS],
     type: "Scalable Vector Graphics File",
+  },
+  WasmFile: {
+    command: "wapm",
+    icon: "wapm",
+    process: ["Terminal"],
+    type: "WebAssembly Module File",
   },
   WinampSkin: {
     icon: "audio",
@@ -110,6 +116,7 @@ const types = {
 const extensions: Record<string, Extension> = {
   ".asx": types.AudioPlaylist,
   ".bin": types.DiscImage,
+  ".dsk": types.DiscImage,
   ".exe": types.Application,
   ".htm": types.HtmlDocument,
   ".html": types.HtmlDocument,
@@ -129,6 +136,7 @@ const extensions: Record<string, Extension> = {
   ".svg": types.SvgFile,
   ".swf": types.ShockwaveFlash,
   ".ttf": types.Font,
+  ".wasm": types.WasmFile,
   ".whtml": types.WysiwygHtmlDocument,
   ".woff": types.Font,
   ".wsz": types.WinampSkin,

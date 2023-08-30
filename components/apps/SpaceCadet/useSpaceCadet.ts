@@ -1,5 +1,6 @@
-import { useProcesses } from "contexts/process";
 import { useEffect, useState } from "react";
+import type { ContainerHookProps } from "components/system/Apps/AppContainer";
+import { useProcesses } from "contexts/process";
 import { TRANSITIONS_IN_MILLISECONDS } from "utils/constants";
 import { loadFiles } from "utils/functions";
 
@@ -15,12 +16,11 @@ declare global {
   }
 }
 
-const useSpaceCadet = (
-  id: string,
-  _url: string,
-  containerRef: React.MutableRefObject<HTMLDivElement | null>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>
-): void => {
+const useSpaceCadet = ({
+  containerRef,
+  id,
+  setLoading,
+}: ContainerHookProps): void => {
   const { processes: { [id]: { libs = [] } = {} } = {} } = useProcesses();
   const [canvas, setCanvas] = useState<HTMLCanvasElement>();
 

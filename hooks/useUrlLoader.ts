@@ -1,11 +1,9 @@
-import extensions from "components/system/Files/FileEntry/extensions";
-import { getDefaultFileViewer } from "components/system/Files/FileEntry/functions";
+import { useEffect, useRef } from "react";
+import { getProcessByFileExtension } from "components/system/Files/FileEntry/functions";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
-import { extname } from "path";
-import { useEffect, useRef } from "react";
-import { getSearchParam } from "utils/functions";
+import { getExtension, getSearchParam } from "utils/functions";
 
 const useUrlLoader = (): void => {
   const { exists, fs } = useFileSystem();
@@ -45,13 +43,10 @@ const useUrlLoader = (): void => {
 
       loadInitialApp(lcAppNames[app.toLowerCase()]);
     } else if (url) {
-      const extension = extname(url).toLowerCase();
-      const { process: [defaultApp] = [] } = extensions[extension] || {};
+      const extension = getExtension(url);
 
       loadInitialApp(
-        extension
-          ? defaultApp || getDefaultFileViewer(extension)
-          : "FileExplorer"
+        extension ? getProcessByFileExtension(extension) : "FileExplorer"
       );
     }
   }, [exists, fs, open]);

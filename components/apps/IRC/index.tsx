@@ -1,9 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { getNetworkConfig } from "components/apps/IRC/config";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import StyledLoading from "components/system/Files/FileManager/StyledLoading";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
-import { useEffect, useRef, useState } from "react";
 import { IFRAME_CONFIG } from "utils/constants";
 
 type KiwiIrcClient = {
@@ -44,16 +44,7 @@ const IRC: FC<ComponentProcessProps> = ({ id }) => {
       const kiwiWindow = iframeRef.current.contentWindow as Window & {
         kiwi: KiwiIrcClient;
       };
-      const networkEntries = [
-        ...kiwiWindow.document.querySelectorAll(
-          ".kiwi-network-name-option-collapse"
-        ),
-      ] as HTMLDivElement[];
 
-      networkEntries.forEach(
-        (networkEntryCollapse, index) =>
-          index !== 0 && networkEntryCollapse?.click()
-      );
       kiwiWindow?.kiwi.on("irc.join", ({ channel }, { name }) =>
         setChannels((currentChannels) => [
           ...new Set([...currentChannels, `${channel}/${name}`]),

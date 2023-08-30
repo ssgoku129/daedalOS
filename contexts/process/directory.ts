@@ -1,5 +1,5 @@
-import type { Processes } from "contexts/process/types";
 import dynamic from "next/dynamic";
+import type { Processes } from "contexts/process/types";
 import { FOLDER_ICON, TASKBAR_HEIGHT } from "utils/constants";
 
 const directory: Processes = {
@@ -31,6 +31,16 @@ const directory: Processes = {
     },
     icon: "/System/Icons/chromium.webp",
     title: "Browser",
+  },
+  Chat: {
+    Component: dynamic(() => import("components/apps/Chat")),
+    backgroundColor: "rgb(68, 70, 84)",
+    defaultSize: {
+      height: 400,
+      width: 550,
+    },
+    icon: "/System/Icons/chat.webp",
+    title: "AI Chat",
   },
   ClassiCube: {
     Component: dynamic(() => import("components/apps/ClassiCube")),
@@ -94,7 +104,7 @@ const directory: Processes = {
       width: 704,
     },
     icon: "/System/Icons/kiwiirc.webp",
-    libs: ["Program Files/kiwiirc/index.html"],
+    libs: ["/Program Files/kiwiirc/index.html"],
     title: "IRC",
   },
   JSDOS: {
@@ -148,6 +158,19 @@ const directory: Processes = {
     preferProcessIcon: true,
     title: "OpenType",
   },
+  OpenWith: {
+    Component: dynamic(() => import("components/system/Dialogs/OpenWith")),
+    allowResizing: false,
+    backgroundColor: "#FFF",
+    defaultSize: {
+      height: 492,
+      width: 392,
+    },
+    hideTaskbarEntry: true,
+    hideTitlebar: true,
+    icon: "/System/Icons/unknown.webp",
+    title: "Open With",
+  },
   PDF: {
     Component: dynamic(() => import("components/apps/PDF")),
     backgroundColor: "#525659",
@@ -167,7 +190,7 @@ const directory: Processes = {
       width: 640,
     },
     icon: "/System/Icons/paint.webp",
-    libs: ["Program Files/jspaint/index.html"],
+    libs: ["/Program Files/jspaint/index.html"],
     title: "Paint",
   },
   Photos: {
@@ -180,6 +203,19 @@ const directory: Processes = {
     hideTitlebarIcon: true,
     icon: "/System/Icons/photos.webp",
     title: "Photos",
+  },
+  Properties: {
+    Component: dynamic(() => import("components/system/Dialogs/Properties")),
+    allowResizing: false,
+    backgroundColor: "rgb(240, 240, 240)",
+    defaultSize: {
+      height: 412,
+      width: 361,
+    },
+    hideMaximizeButton: true,
+    hideMinimizeButton: true,
+    icon: "",
+    title: "Properties",
   },
   Quake3: {
     Component: dynamic(() => import("components/apps/Quake3")),
@@ -236,12 +272,25 @@ const directory: Processes = {
     singleton: true,
     title: "Space Cadet",
   },
+  StableDiffusion: {
+    Component: dynamic(() => import("components/apps/StableDiffusion")),
+    allowResizing: false,
+    backgroundColor: "rgb(235, 251, 247)",
+    defaultSize: {
+      height: 600,
+      width: 544,
+    },
+    icon: "/System/Icons/stablediffusion.webp",
+    lockAspectRatio: true,
+    singleton: true,
+    title: "Stable Diffusion",
+  },
   Terminal: {
     Component: dynamic(() => import("components/apps/Terminal")),
     backgroundColor: "rgba(12, 12, 12, 0.5)",
     defaultSize: {
-      height: 340,
-      width: 553,
+      height: 369,
+      width: 615,
     },
     icon: "/System/Icons/xterm.webp",
     libs: [

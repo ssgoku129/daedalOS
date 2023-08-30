@@ -1,9 +1,13 @@
+import { basename, dirname, extname, relative } from "path";
+import { useCallback, useEffect, useState } from "react";
+import type { Editor, NotificationSpec } from "tinymce";
 import { config, DEFAULT_SAVE_PATH } from "components/apps/TinyMCE/config";
 import {
   draggableEditor,
   setReadOnlyMode,
 } from "components/apps/TinyMCE/functions";
 import type { IRTFJS } from "components/apps/TinyMCE/types";
+import type { ContainerHookProps } from "components/system/Apps/AppContainer";
 import {
   getModifiedTime,
   getProcessByFileExtension,
@@ -13,20 +17,17 @@ import useTitle from "components/system/Window/useTitle";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import { useSession } from "contexts/session";
-import { basename, dirname, extname, relative } from "path";
-import { useCallback, useEffect, useState } from "react";
-import type { Editor, NotificationSpec } from "tinymce";
 import { DEFAULT_LOCALE } from "utils/constants";
-import { haltEvent, loadFiles } from "utils/functions";
+import { getExtension, haltEvent, loadFiles } from "utils/functions";
 
 type OptionSetter = <K, T>(name: K, value: T) => void;
 
-const useTinyMCE = (
-  id: string,
-  url: string,
-  containerRef: React.MutableRefObject<HTMLDivElement | null>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>
-): void => {
+const useTinyMCE = ({
+  containerRef,
+  id,
+  setLoading,
+  url,
+}: ContainerHookProps): void => {
   const {
     open,
     processes: { [id]: { libs = [] } = {} } = {},
@@ -68,7 +69,7 @@ const useTinyMCE = (
             haltEvent(event);
 
             const defaultProcess = getProcessByFileExtension(
-              extname(link.pathname).toLowerCase()
+              getExtension(link.pathname)
             );
 
             if (defaultProcess) open(defaultProcess, { url: link.pathname });
@@ -83,7 +84,7 @@ const useTinyMCE = (
 
       if (fileContents.length > 0) setReadOnlyMode(editor);
 
-      if (extname(url) === ".rtf") {
+      if (getExtension(url) === ".rtf") {
         const { RTFJS } = (await import("rtf.js")) as unknown as IRTFJS;
         const rtfDoc = new RTFJS.Document(fileContents);
         const rtfHtml = await rtfDoc.render();
@@ -97,6 +98,10 @@ const useTinyMCE = (
 
       linksToProcesses();
       updateTitle(url);
+
+      if (editor.iframeElement?.contentDocument) {
+        editor.iframeElement.contentDocument.documentElement.scrollTop = 0;
+      }
     }
   }, [editor, linksToProcesses, readFile, updateTitle, url]);
 
@@ -113,7 +118,7 @@ const useTinyMCE = (
 
         try {
           await writeFile(
-            extname(saveUrl) === ".rtf"
+            getExtension(saveUrl) === ".rtf"
               ? saveUrl.replace(".rtf", ".whtml")
               : saveUrl,
             editor.getContent(),

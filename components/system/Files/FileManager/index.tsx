@@ -1,3 +1,6 @@
+import { basename, join } from "path";
+import dynamic from "next/dynamic";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import FileEntry from "components/system/Files/FileEntry";
 import StyledSelection from "components/system/Files/FileManager/Selection/StyledSelection";
 import useSelection from "components/system/Files/FileManager/Selection/useSelection";
@@ -11,15 +14,13 @@ import type { FileManagerViewNames } from "components/system/Files/Views";
 import { FileManagerViews } from "components/system/Files/Views";
 import { useFileSystem } from "contexts/fileSystem";
 import { requestPermission } from "contexts/fileSystem/functions";
-import dynamic from "next/dynamic";
-import { basename, extname, join } from "path";
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FOCUSABLE_ELEMENT,
   MOUNTABLE_EXTENSIONS,
   PREVENT_SCROLL,
   SHORTCUT_EXTENSION,
 } from "utils/constants";
+import { getExtension, haltEvent } from "utils/functions";
 
 const StatusBar = dynamic(
   () => import("components/system/Files/FileManager/StatusBar")
@@ -37,6 +38,7 @@ type FileManagerProps = {
   hideShortcutIcons?: boolean;
   id?: string;
   isDesktop?: boolean;
+  isStartMenu?: boolean;
   loadIconsImmediately?: boolean;
   preloadShortcuts?: boolean;
   readOnly?: boolean;
@@ -44,7 +46,6 @@ type FileManagerProps = {
   skipFsWatcher?: boolean;
   skipSorting?: boolean;
   url: string;
-  useNewFolderIcon?: boolean;
   view: FileManagerViewNames;
 };
 
@@ -56,6 +57,7 @@ const FileManager: FC<FileManagerProps> = ({
   hideShortcutIcons,
   id,
   isDesktop,
+  isStartMenu,
   loadIconsImmediately,
   preloadShortcuts,
   readOnly,
@@ -63,7 +65,6 @@ const FileManager: FC<FileManagerProps> = ({
   skipFsWatcher,
   skipSorting,
   url,
-  useNewFolderIcon,
   view,
 }) => {
   const [currentUrl, setCurrentUrl] = useState(url);
@@ -83,7 +84,7 @@ const FileManager: FC<FileManagerProps> = ({
   const { mountFs, rootFs, stat } = useFileSystem();
   const { StyledFileEntry, StyledFileManager } = FileManagerViews[view];
   const { isSelecting, selectionRect, selectionStyling, selectionEvents } =
-    useSelection(fileManagerRef);
+    useSelection(fileManagerRef, focusedEntries, focusFunctions);
   const draggableEntry = useDraggableEntries(
     focusedEntries,
     focusFunctions,
@@ -146,7 +147,7 @@ const FileManager: FC<FileManagerProps> = ({
   }, [currentUrl, permission, rootFs?.mntMap, updateFiles]);
 
   useEffect(() => {
-    if (!mounted && MOUNTABLE_EXTENSIONS.has(extname(url).toLowerCase())) {
+    if (!mounted && MOUNTABLE_EXTENSIONS.has(getExtension(url))) {
       const mountUrl = async (): Promise<void> => {
         if (!(await stat(url)).isDirectory()) {
           setMounted((currentlyMounted) => {
@@ -175,8 +176,10 @@ const FileManager: FC<FileManagerProps> = ({
   }, [currentUrl, folderActions, url]);
 
   useEffect(() => {
-    if (!loading) fileManagerRef.current?.focus(PREVENT_SCROLL);
-  }, [loading]);
+    if (!loading && !isDesktop && !isStartMenu) {
+      fileManagerRef.current?.focus(PREVENT_SCROLL);
+    }
+  }, [isDesktop, isStartMenu, loading]);
 
   return (
     <>
@@ -187,12 +190,14 @@ const FileManager: FC<FileManagerProps> = ({
           ref={fileManagerRef}
           $scrollable={!hideScrolling}
           onKeyDown={onKeyDown}
-          {...(!readOnly && {
-            $selecting: isSelecting,
-            ...fileDrop,
-            ...folderContextMenu,
-            ...selectionEvents,
-          })}
+          {...(readOnly
+            ? { onContextMenu: haltEvent }
+            : {
+                $selecting: isSelecting,
+                ...fileDrop,
+                ...folderContextMenu,
+                ...selectionEvents,
+              })}
           {...FOCUSABLE_ELEMENT}
         >
           {isSelecting && <StyledSelection style={selectionStyling} />}
@@ -211,7 +216,9 @@ const FileManager: FC<FileManagerProps> = ({
                 fileManagerRef={fileManagerRef}
                 focusFunctions={focusFunctions}
                 focusedEntries={focusedEntries}
+                hasNewFolderIcon={isStartMenu}
                 hideShortcutIcon={hideShortcutIcons}
+                isHeading={isDesktop && files[file].systemShortcut}
                 isLoadingFileManager={isLoading}
                 loadIconImmediately={loadIconsImmediately}
                 name={basename(file, SHORTCUT_EXTENSION)}
@@ -221,7 +228,6 @@ const FileManager: FC<FileManagerProps> = ({
                 selectionRect={selectionRect}
                 setRenaming={setRenaming}
                 stats={files[file]}
-                useNewFolderIcon={useNewFolderIcon}
                 view={view}
               />
             </StyledFileEntry>
@@ -240,4 +246,4 @@ const FileManager: FC<FileManagerProps> = ({
   );
 };
 
-export default FileManager;
+export default memo(FileManager);

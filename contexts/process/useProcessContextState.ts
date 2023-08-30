@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import {
   closeProcess,
   maximizeProcess,
@@ -14,7 +15,6 @@ import type {
   ProcessElements,
   Processes,
 } from "contexts/process/types";
-import { useCallback, useState } from "react";
 import { TRANSITIONS_IN_MILLISECONDS } from "utils/constants";
 
 type ProcessContextState = {
@@ -73,8 +73,24 @@ const useProcessContextState = (): ProcessContextState => {
     []
   );
   const open = useCallback(
-    (id: string, processArguments?: ProcessArguments, initialIcon?: string) =>
-      setProcesses(openProcess(id, processArguments || {}, initialIcon)),
+    (id: string, processArguments?: ProcessArguments, initialIcon?: string) => {
+      if (id === "ExternalURL") {
+        const { url: externalUrl = "" } = processArguments || {};
+
+        if (
+          externalUrl.startsWith("http:") ||
+          externalUrl.startsWith("https:")
+        ) {
+          window.open(
+            decodeURIComponent(externalUrl),
+            "_blank",
+            "noopener,noreferrer"
+          );
+        }
+      } else {
+        setProcesses(openProcess(id, processArguments || {}, initialIcon));
+      }
+    },
     []
   );
   const linkElement = useCallback(

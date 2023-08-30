@@ -1,30 +1,29 @@
+import { basename, dirname, extname, join } from "path";
+import { useCallback, useEffect, useRef } from "react";
 import type { Core } from "components/apps/Emulator/config";
 import { emulatorCores } from "components/apps/Emulator/config";
 import type { Emulator } from "components/apps/Emulator/types";
+import type { ContainerHookProps } from "components/system/Apps/AppContainer";
 import useTitle from "components/system/Window/useTitle";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
-import { basename, dirname, extname, join } from "path";
-import { useCallback, useEffect, useRef } from "react";
 import { ICON_CACHE, ICON_CACHE_EXTENSION, SAVE_PATH } from "utils/constants";
-import { bufferToUrl, loadFiles } from "utils/functions";
+import { bufferToUrl, getExtension, loadFiles } from "utils/functions";
 import { zipAsync } from "utils/zipFunctions";
 
 const getCore = (extension: string): [string, Core] => {
-  const lcExt = extension.toLowerCase();
-
   return (Object.entries(emulatorCores).find(([, { ext }]) =>
-    ext.includes(lcExt)
+    ext.includes(extension)
   ) || []) as [string, Core];
 };
 
-const useEmulator = (
-  id: string,
-  url: string,
-  containerRef: React.MutableRefObject<HTMLDivElement | null>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
-  loading: boolean
-): void => {
+const useEmulator = ({
+  containerRef,
+  id,
+  loading,
+  setLoading,
+  url,
+}: ContainerHookProps): void => {
   const { exists, mkdirRecursive, readFile, updateFolder, writeFile } =
     useFileSystem();
   const { linkElement, processes: { [id]: { closing = false } = {} } = {} } =
@@ -55,12 +54,11 @@ const useEmulator = (
     }
 
     loadedUrlRef.current = url;
+    window.EJS_gameName = basename(url, extname(url));
 
-    const ext = extname(url);
-
-    window.EJS_gameName = basename(url, ext);
-
-    const [console, { core = "", zip = false } = {}] = getCore(ext);
+    const [console, { core = "", zip = false } = {}] = getCore(
+      getExtension(url)
+    );
     const rom = await readFile(url);
 
     window.EJS_gameUrl = bufferToUrl(
@@ -123,7 +121,7 @@ const useEmulator = (
       screenshot: false,
     };
 
-    await loadFiles(["Program Files/EmulatorJs/loader.js"], undefined, true);
+    await loadFiles(["/Program Files/EmulatorJs/loader.js"], undefined, true);
 
     prependFileToTitle(`${window.EJS_gameName} (${console})`);
   }, [

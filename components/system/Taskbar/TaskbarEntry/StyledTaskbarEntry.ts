@@ -27,10 +27,10 @@ const StyledTaskbarEntry = styled(motion.li)<StyledTaskbarEntryProps>`
         : ""};
     border-bottom: ${({ $progress, theme }) => `
         ${theme.sizes.taskbar.entry.borderSize} solid ${
-      $progress && $progress > 0 && $progress < 100
-        ? theme.colors.progress
-        : theme.colors.highlight
-    }
+          $progress && $progress > 0 && $progress < 100
+            ? theme.colors.progress
+            : theme.colors.highlight
+        }
       `};
     bottom: 0;
     content: "";
@@ -63,6 +63,11 @@ const StyledTaskbarEntry = styled(motion.li)<StyledTaskbarEntryProps>`
           ? theme.colors.taskbar.activeForeground
           : theme.colors.taskbar.active};
     }
+  }
+
+  > div {
+    align-items: center;
+    display: flex;
   }
 
   figure {

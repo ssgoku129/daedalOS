@@ -1,7 +1,9 @@
+import { basename, join } from "path";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { parseCommand } from "components/apps/Terminal/functions";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import StyledRun from "components/system/Dialogs/Run/StyledRun";
-import StyledButton from "components/system/Dialogs/Transfer/StyledButton";
+import StyledButton from "components/system/Dialogs/StyledButton";
 import {
   getProcessByFileExtension,
   getShortcutInfo,
@@ -11,22 +13,21 @@ import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
 import { useSession } from "contexts/session";
-import { basename, extname, join } from "path";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   DESKTOP_PATH,
   PACKAGE_DATA,
   PREVENT_SCROLL,
   SHORTCUT_EXTENSION,
 } from "utils/constants";
-import { haltEvent } from "utils/functions";
+import { getExtension, haltEvent } from "utils/functions";
 import { getIpfsFileName, getIpfsResource } from "utils/ipfs";
 import spawnSheep from "utils/spawnSheep";
 
 const OPEN_ID = "open";
 
-const resourceAliasMap: Record<string, string> = {
+export const resourceAliasMap: Record<string, string> = {
   cmd: "Terminal",
+  code: "MonacoEditor",
   dos: "JSDOS",
   explorer: "FileExplorer",
   monaco: "MonacoEditor",
@@ -47,7 +48,7 @@ const utilCommandMap: Record<string, () => void> = {
   sheep: spawnSheep,
 };
 
-const Run: FC<ComponentProcessProps> = () => {
+const Run: FC<ComponentProcessProps> = ({ id }) => {
   const {
     open,
     closeWithTransition,
@@ -130,7 +131,7 @@ const Run: FC<ComponentProcessProps> = () => {
             closeOnExecute = false;
           }
         } else {
-          const extension = extname(resourcePath);
+          const extension = getExtension(resourcePath);
 
           if (extension === SHORTCUT_EXTENSION) {
             const { pid, url } = getShortcutInfo(await readFile(resourcePath));
@@ -171,12 +172,13 @@ const Run: FC<ComponentProcessProps> = () => {
 
       setRunning(false);
 
-      if (closeOnExecute) closeWithTransition("Run");
+      if (closeOnExecute) closeWithTransition(id);
     },
     [
       closeWithTransition,
       createPath,
       exists,
+      id,
       open,
       readFile,
       setRunHistory,
@@ -186,11 +188,11 @@ const Run: FC<ComponentProcessProps> = () => {
   );
 
   useLayoutEffect(() => {
-    if (foregroundId === "Run") {
+    if (foregroundId === id) {
       inputRef.current?.focus(PREVENT_SCROLL);
       if (inputRef.current?.value) inputRef.current?.select();
     }
-  }, [foregroundId]);
+  }, [foregroundId, id]);
 
   useLayoutEffect(() => {
     if (runProcess?.url && inputRef.current) {
@@ -203,7 +205,7 @@ const Run: FC<ComponentProcessProps> = () => {
 
   return (
     <StyledRun
-      {...useFileDrop({ id: "Run" })}
+      {...useFileDrop({ id })}
       onContextMenu={(event) => {
         if (!(event.target instanceof HTMLInputElement)) {
           haltEvent(event);
@@ -241,7 +243,7 @@ const Run: FC<ComponentProcessProps> = () => {
               if (key === "Enter") runResource(inputRef.current?.value.trim());
               if (key === "Escape") {
                 haltEvent(event);
-                closeWithTransition("Run");
+                closeWithTransition(id);
               }
             }}
             onKeyUp={({ target }) =>
@@ -279,7 +281,7 @@ const Run: FC<ComponentProcessProps> = () => {
       </div>
       <nav>
         <StyledButton
-          $active={isInputFocused}
+          className={isInputFocused ? "focus" : ""}
           disabled={isEmptyInput || running}
           onClick={() => runResource(inputRef.current?.value.trim())}
         >
@@ -287,7 +289,7 @@ const Run: FC<ComponentProcessProps> = () => {
         </StyledButton>
         <StyledButton
           disabled={running}
-          onClick={() => closeWithTransition("Run")}
+          onClick={() => closeWithTransition(id)}
         >
           Cancel
         </StyledButton>

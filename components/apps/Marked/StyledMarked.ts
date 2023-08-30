@@ -1,7 +1,10 @@
 import styled from "styled-components";
+import ScrollBars from "styles/common/ScrollBars";
+import { DEFAULT_SCROLLBAR_WIDTH } from "utils/constants";
 
 const StyledMarked = styled.div`
   article {
+    ${ScrollBars(DEFAULT_SCROLLBAR_WIDTH, 0, 0, "light")};
     background-color: #f9f9f9;
     box-sizing: border-box;
     font-size: 16px;
@@ -14,6 +17,7 @@ const StyledMarked = styled.div`
 
     * {
       all: revert;
+      user-select: text;
     }
 
     a {

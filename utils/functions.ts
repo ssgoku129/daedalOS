@@ -1,3 +1,6 @@
+import { basename, dirname, extname, join } from "path";
+import type { Position } from "eruda";
+import type HtmlToImage from "html-to-image";
 import type { DragPosition } from "components/system/Files/FileManager/useDraggableEntries";
 import type { Size } from "components/system/Window/RndWindow/useResizable";
 import type { Processes, RelativePosition } from "contexts/process/types";
@@ -6,14 +9,13 @@ import type {
   IconPositions,
   SortOrders,
 } from "contexts/session/types";
-import type { Position } from "eruda";
-import type HtmlToImage from "html-to-image";
-import { basename, dirname, extname, join } from "path";
 import {
+  DEFAULT_LOCALE,
   HIGH_PRIORITY_REQUEST,
   MAX_RES_ICON_OVERRIDE,
   ONE_TIME_PASSIVE_EVENT,
   TASKBAR_HEIGHT,
+  TIMESTAMP_DATE_FORMAT,
 } from "utils/constants";
 
 export const GOOGLE_SEARCH_QUERY = "https://www.google.com/search?igu=1&q=";
@@ -36,14 +38,14 @@ export const getDpi = (): number => {
   return dpi;
 };
 
-export const toggleFullScreen = async (): Promise<void> => {
-  try {
-    await (document.fullscreenElement
-      ? document.exitFullscreen()
-      : document.documentElement.requestFullscreen());
-  } catch {
-    // Ignore failure to enter fullscreen
-  }
+export const getExtension = (url: string): string => extname(url).toLowerCase();
+
+export const sendMouseClick = (target: HTMLElement, count = 1): void => {
+  if (count === 0) return;
+
+  target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+  sendMouseClick(target, count - 1);
 };
 
 export const toggleShowDesktop = (
@@ -102,7 +104,7 @@ export const imageToBufferUrl = (
   path: string,
   buffer: Buffer | string
 ): string =>
-  extname(path) === ".svg"
+  getExtension(path) === ".svg"
     ? `data:image/svg+xml;base64,${window.btoa(buffer.toString())}`
     : `data:image/png;base64,${buffer.toString("base64")}`;
 
@@ -210,7 +212,7 @@ export const loadFiles = async (
   !files || files.length === 0
     ? Promise.resolve()
     : files.reduce(async (_promise, file) => {
-        await (extname(file).toLowerCase() === ".css"
+        await (getExtension(file) === ".css"
           ? loadStyle(encodeURI(file))
           : loadScript(encodeURI(file), defer, force, asModule));
       }, Promise.resolve());
@@ -286,7 +288,7 @@ const calcGridDropPosition = (
   };
 };
 
-const updateIconPositionsIfEmpty = (
+export const updateIconPositionsIfEmpty = (
   url: string,
   gridElement: HTMLElement | null,
   iconPositions: IconPositions,
@@ -459,27 +461,53 @@ export const updateIconPositions = (
   }
 };
 
-export const isCanvasDrawn = (canvas?: HTMLCanvasElement | null): boolean =>
-  canvas instanceof HTMLCanvasElement &&
-  Boolean(
+export const isCanvasDrawn = (canvas?: HTMLCanvasElement | null): boolean => {
+  if (!(canvas instanceof HTMLCanvasElement)) return false;
+
+  const { data: pixels = [] } =
     canvas
-      .getContext("2d", {
-        willReadFrequently: true,
-      })
-      ?.getImageData(0, 0, canvas.width, canvas.height)
-      .data.some((channel) => channel !== 0)
-  );
+      .getContext("2d", { willReadFrequently: true })
+      ?.getImageData(0, 0, canvas.width, canvas.height) || {};
+
+  if (pixels.length === 0) return false;
+
+  const bwPixels: Record<number, number> = { 0: 0, 255: 0 };
+
+  for (const pixel of pixels) {
+    if (pixel !== 0 && pixel !== 255) return true;
+
+    bwPixels[pixel] += 1;
+  }
+
+  const isBlankCanvas =
+    bwPixels[0] === pixels.length ||
+    bwPixels[255] === pixels.length ||
+    (bwPixels[255] + bwPixels[0] === pixels.length &&
+      bwPixels[0] / 3 === bwPixels[255]);
+
+  return !isBlankCanvas;
+};
 
 const bytesInKB = 1024;
 const bytesInMB = 1022976; // 1024 * 999
 const bytesInGB = 1047527424; // 1024 * 1024 * 999
 const bytesInTB = 1072668082176; // 1024 * 1024 * 1024 * 999
 
-const formatNumber = (number: number): string =>
-  new Intl.NumberFormat("en-US", {
-    maximumSignificantDigits: number < 1 ? 2 : 3,
+const formatNumber = (number: number): string => {
+  const formattedNumber = new Intl.NumberFormat("en-US", {
+    maximumSignificantDigits: number < 1 ? 2 : 4,
     minimumSignificantDigits: number < 1 ? 2 : 3,
   }).format(Number(number.toFixed(4).slice(0, -2)));
+
+  const [integer, decimal] = formattedNumber.split(".");
+
+  if (integer.length === 3) return integer;
+  if (integer.length === 2 && decimal.length === 2) {
+    return `${integer}.${decimal[0]}`;
+  }
+
+  return formattedNumber;
+};
 
 export const getFormattedSize = (size = 0): string => {
   if (size === 1) return "1 byte";
@@ -530,15 +558,35 @@ export const getUrlOrSearch = async (input: string): Promise<string> => {
   }
 };
 
-export const isFirefox = (): boolean =>
-  typeof window !== "undefined" && /firefox/i.test(window.navigator.userAgent);
+let IS_FIREFOX: boolean;
 
-export const isSafari = (): boolean =>
-  typeof window !== "undefined" &&
-  /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+export const isFirefox = (): boolean => {
+  if (typeof window === "undefined") return false;
+  if (IS_FIREFOX ?? false) return IS_FIREFOX;
+
+  IS_FIREFOX = /firefox/i.test(window.navigator.userAgent);
+
+  return IS_FIREFOX;
+};
+
+let IS_SAFARI: boolean;
+
+export const isSafari = (): boolean => {
+  if (typeof window === "undefined") return false;
+  if (IS_SAFARI ?? false) return IS_SAFARI;
+
+  IS_SAFARI = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+
+  return IS_SAFARI;
+};
 
 export const haltEvent = (
-  event: Event | React.DragEvent | React.KeyboardEvent | React.MouseEvent
+  event:
+    | Event
+    | React.DragEvent
+    | React.FocusEvent
+    | React.KeyboardEvent
+    | React.MouseEvent
 ): void => {
   try {
     if (event.cancelable) {
@@ -622,7 +670,7 @@ export const preloadLibs = (libs: string[] = []): void => {
     link.rel = "preload";
     link.href = lib;
 
-    switch (extname(lib).toLowerCase()) {
+    switch (getExtension(lib)) {
       case ".css":
         link.as = "style";
         break;
@@ -662,8 +710,11 @@ export const jsonFetch = async (
   return json || {};
 };
 
-export const isCanvasEmpty = (canvas: HTMLCanvasElement): boolean =>
-  !canvas
-    .getContext("2d")
-    ?.getImageData(0, 0, canvas.width, canvas.height)
-    .data.some(Boolean);
+export const generatePrettyTimestamp = (): string =>
+  new Intl.DateTimeFormat(DEFAULT_LOCALE, TIMESTAMP_DATE_FORMAT)
+    .format(new Date())
+    .replace(/[/:]/g, "-")
+    .replace(",", "");
+
+export const isFileSystemMappingSupported = (): boolean =>
+  typeof FileSystemHandle === "function" && "showDirectoryPicker" in window;

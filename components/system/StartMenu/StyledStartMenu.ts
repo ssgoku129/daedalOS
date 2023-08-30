@@ -1,6 +1,6 @@
-import StyledFileManager from "components/system/Files/Views/List/StyledFileManager";
 import { m as motion } from "framer-motion";
 import styled, { css } from "styled-components";
+import StyledFileManager from "components/system/Files/Views/List/StyledFileManager";
 import ScrollBars from "styles/common/ScrollBars";
 import { TASKBAR_HEIGHT, THIN_SCROLLBAR_WIDTH } from "utils/constants";
 
@@ -56,7 +56,6 @@ const StyledStartMenu = styled(motion.nav)<StyledStartMenuProps>`
 
   ${StyledFileManager} {
     ${ScrollBars(THIN_SCROLLBAR_WIDTH, -2, -1)};
-
     margin-top: 0;
     padding-left: ${({ theme }) => theme.sizes.startMenu.sideBar.width}px;
     padding-right: ${THIN_SCROLLBAR_WIDTH}px;
@@ -98,7 +97,6 @@ const StyledStartMenu = styled(motion.nav)<StyledStartMenuProps>`
 
     @media (hover: none), (pointer: coarse) {
       ${ThinScrollBars};
-
       &::-webkit-scrollbar-track {
         margin: 13px 0;
       }

@@ -1,3 +1,5 @@
+import { basename, dirname, join } from "path";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BOOT_CD_FD_HD,
   BOOT_FD_CD_HD,
@@ -12,13 +14,12 @@ import type {
   V86Starter,
 } from "components/apps/V86/types";
 import useV86ScreenSize from "components/apps/V86/useV86ScreenSize";
+import type { ContainerHookProps } from "components/system/Apps/AppContainer";
 import useTitle from "components/system/Window/useTitle";
 import { useFileSystem } from "contexts/fileSystem";
 import { fs9pV4ToV3 } from "contexts/fileSystem/functions";
 import { useProcesses } from "contexts/process";
 import { useSession } from "contexts/session";
-import { basename, dirname, extname, join } from "path";
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ICON_CACHE,
   ICON_CACHE_EXTENSION,
@@ -28,17 +29,22 @@ import {
 import {
   bufferToUrl,
   cleanUpBufferUrl,
+  getExtension,
   getHtmlToImage,
   loadFiles,
 } from "utils/functions";
 
-const useV86 = (
-  id: string,
-  url: string,
-  containerRef: React.MutableRefObject<HTMLDivElement | null>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
-  loading: boolean
-): void => {
+if (typeof window !== "undefined") {
+  window.DEBUG = false;
+}
+
+const useV86 = ({
+  containerRef,
+  id,
+  loading,
+  setLoading,
+  url,
+}: ContainerHookProps): void => {
   const {
     processes: { [id]: process },
   } = useProcesses();
@@ -108,7 +114,7 @@ const useV86 = (
     if (currentUrl) await closeDiskImage(currentUrl);
 
     const imageContents = url ? await readFile(url) : Buffer.from("");
-    const ext = extname(url).toLowerCase();
+    const ext = getExtension(url);
     const isISO = ext === ".iso";
     const bufferUrl = bufferToUrl(imageContents);
     const v86ImageConfig: V86ImageConfig = {
@@ -188,8 +194,9 @@ const useV86 = (
   useEffect(() => {
     const isActiveInstance = foregroundId === id;
 
-    Object.values(emulator).forEach((emulatorInstance) =>
-      emulatorInstance?.keyboard_set_status(isActiveInstance)
+    Object.values(emulator).forEach(
+      (emulatorInstance) =>
+        emulatorInstance?.keyboard_set_status(isActiveInstance)
     );
   }, [emulator, foregroundId, id]);
 
@@ -217,9 +224,13 @@ const useV86 = (
             } else if (currentContainerRef instanceof HTMLElement) {
               const htmlToImage = await getHtmlToImage();
 
-              screenshot = await htmlToImage?.toPng(currentContainerRef, {
-                skipAutoScale: true,
-              });
+              try {
+                screenshot = await htmlToImage?.toPng(currentContainerRef, {
+                  skipAutoScale: true,
+                });
+              } catch {
+                // Ignore failure to capture
+              }
             }
 
             return screenshot

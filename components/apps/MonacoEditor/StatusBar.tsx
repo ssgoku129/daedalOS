@@ -1,3 +1,5 @@
+import { basename, dirname } from "path";
+import { memo, useEffect, useState } from "react";
 import { getSaveFileInfo } from "components/apps/MonacoEditor/functions";
 import {
   isPrettyLanguage,
@@ -9,12 +11,10 @@ import type { ComponentProcessProps } from "components/system/Apps/RenderCompone
 import useTitle from "components/system/Window/useTitle";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
-import { basename, dirname } from "path";
-import { useEffect, useState } from "react";
 import Button from "styles/common/Button";
 import { haltEvent, label } from "utils/functions";
 
-const SaveIcon: FC = () => (
+const SaveIcon = memo(() => (
   <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
     <path
       clipRule="evenodd"
@@ -22,7 +22,7 @@ const SaveIcon: FC = () => (
       fillRule="evenodd"
     />
   </svg>
-);
+));
 
 const StatusBar: FC<ComponentProcessProps> = ({ id }) => {
   const {

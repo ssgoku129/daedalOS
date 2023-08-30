@@ -1,5 +1,8 @@
+import { basename, dirname, extname, join, relative } from "path";
 import type { ApiError } from "browserfs/dist/node/core/api_error";
 import type Stats from "browserfs/dist/node/core/node_fs_stats";
+import type { AsyncZipOptions, AsyncZippable } from "fflate";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useTransferDialog from "components/system/Dialogs/Transfer/useTransferDialog";
 import {
   createShortcut,
@@ -10,6 +13,7 @@ import {
 import type { FileStat } from "components/system/Files/FileManager/functions";
 import {
   findPathsRecursive,
+  removeInvalidFilenameCharacters,
   sortByDate,
   sortBySize,
   sortContents,
@@ -23,18 +27,19 @@ import useSortBy from "components/system/Files/FileManager/useSortBy";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import { useSession } from "contexts/session";
-import type { AsyncZipOptions, AsyncZippable } from "fflate";
-import { basename, dirname, extname, join, relative } from "path";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BASE_ZIP_CONFIG,
   DESKTOP_PATH,
-  INVALID_FILE_CHARACTERS,
   SHORTCUT_APPEND,
   SHORTCUT_EXTENSION,
   SYSTEM_SHORTCUT_DIRECTORIES,
 } from "utils/constants";
-import { bufferToUrl, cleanUpBufferUrl, preloadLibs } from "utils/functions";
+import {
+  bufferToUrl,
+  cleanUpBufferUrl,
+  getExtension,
+  preloadLibs,
+} from "utils/functions";
 
 export type FileActions = {
   archiveFiles: (paths: string[]) => void;
@@ -52,13 +57,15 @@ export const COMPLETE_ACTION: Record<string, CompleteAction> = {
   UPDATE_URL: "updateUrl",
 };
 
+export type NewPath = (
+  fileName: string,
+  buffer?: Buffer,
+  completeAction?: CompleteAction
+) => Promise<string>;
+
 export type FolderActions = {
-  addToFolder: () => void;
-  newPath: (
-    path: string,
-    buffer?: Buffer,
-    completeAction?: CompleteAction
-  ) => Promise<void>;
+  addToFolder: () => Promise<string[]>;
+  newPath: NewPath;
   pasteToFolder: () => void;
   resetFiles: () => void;
   sortByOrder: [SortByOrder, SetSortBy];
@@ -133,7 +140,7 @@ const useFolder = (
     async (fileName: string, stats: Stats): Promise<FileStat> => {
       if (
         SYSTEM_SHORTCUT_DIRECTORIES.has(directory) &&
-        extname(fileName).toLowerCase() === SHORTCUT_EXTENSION
+        getExtension(fileName) === SHORTCUT_EXTENSION
       ) {
         return Object.assign(stats, {
           systemShortcut:
@@ -287,8 +294,9 @@ const useFolder = (
   );
   const deleteLocalPath = useCallback(
     async (path: string): Promise<void> => {
-      await deletePath(path);
-      updateFolder(directory, undefined, basename(path));
+      if (await deletePath(path)) {
+        updateFolder(directory, undefined, basename(path));
+      }
     },
     [deletePath, directory, updateFolder]
   );
@@ -314,7 +322,7 @@ const useFolder = (
     [directory, readFile]
   );
   const renameFile = async (path: string, name?: string): Promise<void> => {
-    let newName = name?.replace(INVALID_FILE_CHARACTERS, "").trim();
+    let newName = removeInvalidFilenameCharacters(name).trim();
 
     if (newName?.endsWith(".")) {
       newName = newName.slice(0, -1);
@@ -328,8 +336,7 @@ const useFolder = (
         }`
       );
 
-      if (!(await exists(renamedPath))) {
-        await rename(path, renamedPath);
+      if (!(await exists(renamedPath)) && (await rename(path, renamedPath))) {
         updateFolder(directory, renamedPath, path);
       }
 
@@ -351,7 +358,7 @@ const useFolder = (
       name: string,
       buffer?: Buffer,
       completeAction?: CompleteAction
-    ): Promise<void> => {
+    ): Promise<string> => {
       const uniqueName = await createPath(name, directory, buffer);
 
       if (uniqueName && !uniqueName.includes("/")) {
@@ -363,12 +370,14 @@ const useFolder = (
           focusEntry(uniqueName);
         }
       }
+
+      return uniqueName;
     },
     [blurEntry, createPath, directory, focusEntry, setRenaming, updateFolder]
   );
   const newShortcut = useCallback(
     (path: string, process: string): void => {
-      const pathExtension = extname(path).toLowerCase();
+      const pathExtension = getExtension(path);
 
       if (pathExtension === SHORTCUT_EXTENSION) {
         fs?.readFile(path, (_readError, contents = Buffer.from("")) =>
@@ -401,7 +410,7 @@ const useFolder = (
           ([path, file]) =>
             [
               path,
-              extname(path) === SHORTCUT_EXTENSION
+              getExtension(path) === SHORTCUT_EXTENSION
                 ? makeExternalShortcut(file)
                 : file,
             ] as [string, Buffer]
@@ -437,7 +446,7 @@ const useFolder = (
     async (paths: string[]): Promise<void> => {
       const zipFiles = await createZipFile(paths);
       const zipEntries = Object.entries(zipFiles);
-      const [[path, file]] = zipEntries;
+      const [[path, file]] = zipEntries.length === 0 ? [["", ""]] : zipEntries;
       const singleParentEntry = zipEntries.length === 1;
 
       if (singleParentEntry && extname(path)) {
@@ -470,7 +479,7 @@ const useFolder = (
       const { unarchive, unzip } = await import("utils/zipFunctions");
       openTransferDialog(undefined, path);
       const unzippedFiles = [".jsdos", ".wsz", ".zip"].includes(
-        extname(path).toLowerCase()
+        getExtension(path)
       )
         ? await unzip(data)
         : await unarchive(path, data);
@@ -538,9 +547,9 @@ const useFolder = (
         uniquePath = await createPath(newBasePath, directory);
 
         await Promise.all(
-          (
-            await readdir(entry)
-          ).map((dirEntry) => copyFiles(join(entry, dirEntry), uniquePath))
+          (await readdir(entry)).map((dirEntry) =>
+            copyFiles(join(entry, dirEntry), uniquePath)
+          )
         );
       } else {
         uniquePath = await createPath(

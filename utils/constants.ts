@@ -1,6 +1,6 @@
+import type { AsyncZipOptions } from "fflate";
 import type { Size } from "components/system/Window/RndWindow/useResizable";
 import type { ClockSource, WallpaperFit } from "contexts/session/types";
-import type { AsyncZipOptions } from "fflate";
 import type { ThemeName } from "styles/themes";
 
 export const BASE_2D_CONTEXT_OPTIONS: CanvasRenderingContext2DSettings = {
@@ -29,6 +29,10 @@ export const DEFAULT_CLOCK_SOURCE: ClockSource = "local";
 
 export const DEFAULT_THEME: ThemeName = "defaultTheme";
 
+export const DEFAULT_AI_API = "HuggingFace:"; // Engine:Key
+
+export const DEFAULT_NON_WEBGPU_ENGINE = "HuggingFace";
+
 export const DEFAULT_WALLPAPER = "VANTA";
 
 export const DEFAULT_WALLPAPER_FIT: WallpaperFit = "fill";
@@ -48,11 +52,21 @@ export const DEFAULT_MAPPED_NAME = "Share";
 
 export const FOCUSABLE_ELEMENT = { tabIndex: -1 };
 
+export const DIV_BUTTON_PROPS = {
+  as: "div",
+  role: "button",
+  ...FOCUSABLE_ELEMENT,
+};
+
 export const FS_HANDLES = "FileSystemAccessHandles";
 
 export const HOME = "/Users/Public";
 
 export const PICTURES_FOLDER = `${HOME}/Pictures`;
+
+export const INDEX_FILE = "/index.html";
+
+export const PROMPT_FILE = "prompts.json";
 
 export const SLIDESHOW_FILE = "slideshow.json";
 
@@ -75,6 +89,8 @@ export const TIFF_IMAGE_FORMATS = new Set([
   ".tif",
   ".tiff",
 ]);
+
+export const CLIPBOARD_FILE_EXTENSIONS = new Set([".jpeg", ".jpg", ".png"]);
 
 export const IMAGE_FILE_EXTENSIONS = new Set([
   ...TIFF_IMAGE_FORMATS,
@@ -107,6 +123,8 @@ export const UNSUPPORTED_BACKGROUND_EXTENSIONS = new Set([
   ".svg",
 ]);
 
+export const CURSOR_FILE_EXTENSIONS = new Set([".ani", ".cur"]);
+
 export const EDITABLE_IMAGE_FILE_EXTENSIONS = new Set([
   ".bmp",
   ".gif",
@@ -122,8 +140,6 @@ export const EDITABLE_IMAGE_FILE_EXTENSIONS = new Set([
 ]);
 
 export const PHOTO_ICON = "/System/Icons/photo.webp";
-
-export const INVALID_FILE_CHARACTERS = /["*/:<>?\\|]/g;
 
 export const MAX_FILE_NAME_LENGTH = 223;
 
@@ -218,6 +234,8 @@ export const SPREADSHEET_FORMATS = [
 
 export const MP3_MIME_TYPE = "audio/mpeg";
 
+export const VIDEO_FALLBACK_MIME_TYPE = "video/mp4";
+
 export const NON_BREAKING_HYPHEN = "\u2011";
 
 export const ONE_TIME_PASSIVE_EVENT = {
@@ -248,8 +266,15 @@ export const SYSTEM_SHORTCUT_DIRECTORIES = new Set([DESKTOP_PATH]);
 export const TRANSITIONS_IN_MILLISECONDS = {
   DOUBLE_CLICK: 500,
   LONG_PRESS: 500,
-  START_MENU: 400,
+  MOUSE_IN_OUT: 300,
+  TASKBAR_ITEM: 400,
   WINDOW: 250,
+};
+
+export const TRANSITIONS_IN_SECONDS = {
+  TASKBAR_ITEM:
+    TRANSITIONS_IN_MILLISECONDS.TASKBAR_ITEM / MILLISECONDS_IN_SECOND,
+  WINDOW: TRANSITIONS_IN_MILLISECONDS.WINDOW / MILLISECONDS_IN_SECOND,
 };
 
 export const LONG_PRESS_DELAY_MS = 750;
@@ -273,6 +298,7 @@ export const VIDEO_FILE_EXTENSIONS = new Set([
 
 export const DYNAMIC_EXTENSION = new Set([
   ...AUDIO_FILE_EXTENSIONS,
+  ...AUDIO_PLAYLIST_EXTENSIONS,
   ...IMAGE_FILE_EXTENSIONS,
   ...TIFF_IMAGE_FORMATS,
   ...VIDEO_FILE_EXTENSIONS,
@@ -322,6 +348,16 @@ export const UNKNOWN_ICON =
 
 export const UNKNOWN_ICON_PATH = `${ICON_PATH}/unknown.webp`;
 
+export const TIMESTAMP_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  hour: "2-digit",
+  hour12: false,
+  minute: "2-digit",
+  month: "2-digit",
+  second: "2-digit",
+  year: "numeric",
+};
+
 export const MAX_RES_ICON_OVERRIDE: Record<string, [number, number]> = {
   desktop: [16, 32],
   document: [16, 32],
@@ -333,6 +369,8 @@ export const MAX_RES_ICON_OVERRIDE: Record<string, [number, number]> = {
   user: [16, 16],
   videos: [16, 32],
 };
+
+export const MAX_ICON_SIZE = 144;
 
 export const DEFAULT_TEXT_FILE_SAVE_PATH = `${DESKTOP_PATH}/Untitled.txt`;
 
@@ -363,6 +401,3 @@ export const HIGH_PRIORITY_REQUEST = { priority: "high" } as RequestInit;
 export const HIGH_PRIORITY_ELEMENT = {
   fetchpriority: "high",
 } as React.HTMLAttributes<HTMLElement>;
-
-export const isFileSystemSupported = (): boolean =>
-  typeof FileSystemHandle === "function" && "showDirectoryPicker" in window;

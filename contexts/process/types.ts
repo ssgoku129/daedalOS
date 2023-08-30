@@ -1,14 +1,15 @@
+import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import type {
   FileReaders,
   ObjectReaders,
 } from "components/system/Dialogs/Transfer/useTransferDialog";
 import type { Size } from "components/system/Window/RndWindow/useResizable";
-import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 
 type DialogProcessArguments = {
   fileReaders?: FileReaders | ObjectReaders;
   progress?: number;
+  shortcutPath?: string;
 };
 
 type MonacoProcessArguments = {
@@ -36,6 +37,7 @@ type BaseProcessArguments = {
   hideMaximizeButton?: boolean;
   hideMinimizeButton?: boolean;
   hideTaskbarEntry?: boolean;
+  hideTitlebar?: boolean;
   hideTitlebarIcon?: boolean;
   initialRelativePosition?: RelativePosition;
   libs?: string[];

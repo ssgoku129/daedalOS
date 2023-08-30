@@ -1,3 +1,6 @@
+import { basename, extname } from "path";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Options } from "webamp";
 import {
   cleanBufferOnSkinLoad,
   focusWindow,
@@ -12,11 +15,8 @@ import useFocusable from "components/system/Window/useFocusable";
 import useWindowTransitions from "components/system/Window/useWindowTransitions";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
-import { basename, extname } from "path";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AUDIO_PLAYLIST_EXTENSIONS } from "utils/constants";
-import { bufferToUrl, loadFiles } from "utils/functions";
-import type { Options } from "webamp";
+import { bufferToUrl, getExtension, loadFiles } from "utils/functions";
 
 const Webamp: FC<ComponentProcessProps> = ({ id }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -38,7 +38,7 @@ const Webamp: FC<ComponentProcessProps> = ({ id }) => {
   const { zIndex, ...focusableProps } = useFocusable(id, focusEvents);
   const getUrlOptions = useCallback(async (): Promise<Options> => {
     if (url) {
-      const extension = extname(url).toLowerCase();
+      const extension = getExtension(url);
 
       if (AUDIO_PLAYLIST_EXTENSIONS.has(extension)) {
         const initialTracks = await tracksFromPlaylist(
@@ -74,7 +74,6 @@ const Webamp: FC<ComponentProcessProps> = ({ id }) => {
       }
     }
   }, [getUrlOptions, webampCI]);
-  const style = useMemo<React.CSSProperties>(() => ({ zIndex }), [zIndex]);
   const loadingWebamp = useRef(false);
 
   useEffect(() => {
@@ -106,7 +105,7 @@ const Webamp: FC<ComponentProcessProps> = ({ id }) => {
     <StyledWebamp
       ref={containerRef}
       $minimized={minimized}
-      style={style}
+      $zIndex={zIndex}
       {...focusableProps}
       {...windowTransitions}
     />

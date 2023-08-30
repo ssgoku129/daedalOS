@@ -15,9 +15,18 @@ const StyledVideoPlayer = styled.div`
 
     .vjs-control-bar {
       background-color: rgb(240, 240, 240);
-      display: flex !important;
-      opacity: 100% !important;
       padding: 0 1;
+
+      &:not(.no-interaction) {
+        display: flex !important;
+        opacity: 100% !important;
+      }
+
+      .no-interaction {
+        display: none !important;
+        opacity: 0% !important;
+        pointer-events: none !important;
+      }
     }
 
     &.vjs-youtube,
@@ -80,7 +89,7 @@ const StyledVideoPlayer = styled.div`
     .vjs-current-time-display,
     .vjs-duration-display {
       color: #000;
-      font-family: Sans-Serif;
+      font-family: sans-serif;
       font-size: 11px;
     }
 
@@ -113,7 +122,7 @@ const StyledVideoPlayer = styled.div`
         color: rgb(237, 237, 237);
         text-shadow: 1px 2px 3px rgb(160, 160, 160);
         -webkit-text-stroke: 1px rgba(164, 164, 164, 80%);
-        top: -3px;
+        top: 1px;
       }
     }
 

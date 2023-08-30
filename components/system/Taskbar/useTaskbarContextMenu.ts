@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMenu } from "contexts/menu";
 import type {
   ContextMenuCapture,
@@ -5,14 +6,15 @@ import type {
 } from "contexts/menu/useMenuContextState";
 import { useProcesses } from "contexts/process";
 import { useProcessesRef } from "hooks/useProcessesRef";
-import { useMemo } from "react";
 import { MENU_SEPERATOR } from "utils/constants";
-import { toggleFullScreen, toggleShowDesktop } from "utils/functions";
+import { toggleShowDesktop } from "utils/functions";
+import { useViewport } from "contexts/viewport";
 
 const useTaskbarContextMenu = (onStartButton = false): ContextMenuCapture => {
   const { contextMenu } = useMenu();
   const { minimize, open } = useProcesses();
   const processesRef = useProcessesRef();
+  const { fullscreenElement, toggleFullscreen } = useViewport();
 
   return useMemo(
     () =>
@@ -51,10 +53,11 @@ const useTaskbarContextMenu = (onStartButton = false): ContextMenuCapture => {
         } else {
           menuItems.unshift(
             {
-              action: toggleFullScreen,
-              label: document.fullscreenElement
-                ? "Exit full screen"
-                : "Enter full screen",
+              action: () => toggleFullscreen(),
+              label:
+                fullscreenElement === document.documentElement
+                  ? "Exit full screen"
+                  : "Enter full screen",
             },
             MENU_SEPERATOR
           );
@@ -62,7 +65,15 @@ const useTaskbarContextMenu = (onStartButton = false): ContextMenuCapture => {
 
         return menuItems;
       }),
-    [contextMenu, minimize, onStartButton, open, processesRef]
+    [
+      contextMenu,
+      fullscreenElement,
+      minimize,
+      onStartButton,
+      open,
+      processesRef,
+      toggleFullscreen,
+    ]
   );
 };
 

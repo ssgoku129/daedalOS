@@ -1,11 +1,12 @@
+import type { Font, LocalizedName } from "opentype.js";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StyledOpenType from "components/apps/OpenType/StyledOpenType";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import useFileDrop from "components/system/Files/FileManager/useFileDrop";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
-import type { Font, LocalizedName } from "opentype.js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { haltEvent } from "utils/functions";
 
 type FontCanvasProps = {
   font?: Font;
@@ -57,16 +58,25 @@ const FontCanvas: FC<FontCanvasProps> = ({
   );
 };
 
+const MemoizedFontCanvas = memo(FontCanvas);
+
 const OpenType: FC<ComponentProcessProps> = ({ id }) => {
   const { processes: { [id]: { url = "" } = {} } = {}, title } = useProcesses();
   const { readFile } = useFileSystem();
   const [font, setFont] = useState<Font>();
+  const [showDrop, setShowDrop] = useState(true);
   const loadFont = useCallback(
     async (fontUrl: string) => {
+      setShowDrop(false);
+
       const { default: openType } = await import("opentype.js");
       const { buffer } = await readFile(fontUrl);
 
-      setFont(openType.parse(buffer));
+      try {
+        setFont(openType.parse(buffer));
+      } catch {
+        setShowDrop(true);
+      }
     },
     [readFile]
   );
@@ -101,7 +111,11 @@ const OpenType: FC<ComponentProcessProps> = ({ id }) => {
   );
 
   return (
-    <StyledOpenType {...useFileDrop({ id })}>
+    <StyledOpenType
+      $drop={showDrop}
+      {...useFileDrop({ id })}
+      onContextMenuCapture={haltEvent}
+    >
       {font && (
         <>
           <ol>
@@ -111,7 +125,7 @@ const OpenType: FC<ComponentProcessProps> = ({ id }) => {
           </ol>
           <ol>
             <li>
-              <FontCanvas
+              <MemoizedFontCanvas
                 font={font}
                 fontSize={15}
                 text={ALPHABETS}
@@ -119,7 +133,7 @@ const OpenType: FC<ComponentProcessProps> = ({ id }) => {
               />
             </li>
             <li>
-              <FontCanvas
+              <MemoizedFontCanvas
                 font={font}
                 fontSize={15}
                 text={NUMBERS_SYMBOLS}
@@ -130,7 +144,7 @@ const OpenType: FC<ComponentProcessProps> = ({ id }) => {
           <ol>
             {FONT_SIZES.map((size) => (
               <li key={size}>
-                <FontCanvas font={font} fontSize={size} />
+                <MemoizedFontCanvas font={font} fontSize={size} />
               </li>
             ))}
           </ol>
@@ -140,4 +154,4 @@ const OpenType: FC<ComponentProcessProps> = ({ id }) => {
   );
 };
 
-export default OpenType;
+export default memo(OpenType);

@@ -1,3 +1,6 @@
+import { basename, dirname } from "path";
+import { useCallback, useEffect, useRef } from "react";
+import type { Options, Track, URLTrack } from "webamp";
 import {
   BASE_WEBAMP_OPTIONS,
   cleanBufferOnSkinLoad,
@@ -21,8 +24,6 @@ import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import processDirectory from "contexts/process/directory";
 import { useSession } from "contexts/session";
-import { basename, dirname, extname } from "path";
-import { useCallback, useRef } from "react";
 import {
   AUDIO_PLAYLIST_EXTENSIONS,
   DESKTOP_PATH,
@@ -31,8 +32,7 @@ import {
   SAVE_PATH,
   TRANSITIONS_IN_MILLISECONDS,
 } from "utils/constants";
-import { haltEvent } from "utils/functions";
-import type { Options, Track, URLTrack } from "webamp";
+import { getExtension, haltEvent } from "utils/functions";
 
 type Webamp = {
   initWebamp: (containerElement: HTMLDivElement, options: Options) => void;
@@ -51,7 +51,7 @@ const useWebamp = (id: string): Webamp => {
     processes: { [id]: process },
     title,
   } = useProcesses();
-  const { componentWindow } = process || {};
+  const { closing, componentWindow } = process || {};
   const webampCI = useRef<WebampCI>();
   const {
     createPath,
@@ -65,6 +65,21 @@ const useWebamp = (id: string): Webamp => {
   const { onDrop } = useFileDrop({ id });
   const metadataProviderRef = useRef<number>();
   const windowPositionDebounceRef = useRef<number>();
+  const subscriptions = useRef<(() => void)[]>([]);
+  const onWillClose = useCallback(
+    (cancel?: () => void): void => {
+      cancel?.();
+      onClose();
+
+      window.setTimeout(() => {
+        subscriptions.current.forEach((unsubscribe) => unsubscribe());
+        webampCI.current?.close();
+      }, TRANSITIONS_IN_MILLISECONDS.WINDOW);
+      window.clearInterval(metadataProviderRef.current);
+      window.clearInterval(windowPositionDebounceRef.current);
+    },
+    [onClose]
+  );
   const initWebamp = useCallback(
     (
       containerElement: HTMLDivElement,
@@ -77,7 +92,7 @@ const useWebamp = (id: string): Webamp => {
         );
 
         if (externalUrl) {
-          const playlistExtension = extname(externalUrl).toLowerCase();
+          const playlistExtension = getExtension(externalUrl);
 
           if (AUDIO_PLAYLIST_EXTENSIONS.has(playlistExtension)) {
             return tracksFromPlaylist(
@@ -160,18 +175,9 @@ const useWebamp = (id: string): Webamp => {
           }));
         }, TRANSITIONS_IN_MILLISECONDS.WINDOW);
       };
-      const subscriptions = [
-        webamp.onWillClose((cancel) => {
-          cancel();
-          onClose();
 
-          window.setTimeout(() => {
-            subscriptions.forEach((unsubscribe) => unsubscribe());
-            webamp.close();
-          }, TRANSITIONS_IN_MILLISECONDS.WINDOW);
-          window.clearInterval(metadataProviderRef.current);
-          window.clearInterval(windowPositionDebounceRef.current);
-        }),
+      subscriptions.current.push(
+        webamp.onWillClose(onWillClose),
         webamp.onMinimize(() => onMinimize()),
         webamp.onTrackDidChange((track) => {
           const { milkdrop, windows } = webamp.store.getState();
@@ -247,8 +253,8 @@ const useWebamp = (id: string): Webamp => {
         webamp._actionEmitter.on("LOAD_DEFAULT_SKIN", () => {
           deletePath(SKIN_DATA_PATH);
         }),
-        webamp._actionEmitter.on("UPDATE_WINDOW_POSITIONS", updatePosition),
-      ];
+        webamp._actionEmitter.on("UPDATE_WINDOW_POSITIONS", updatePosition)
+      );
 
       if (initialSkin) cleanBufferOnSkinLoad(webamp, initialSkin.url);
 
@@ -262,6 +268,7 @@ const useWebamp = (id: string): Webamp => {
         if (initialTracks) webamp.play();
       });
 
+      window.WebampGlobal = webamp;
       webampCI.current = webamp;
     },
     [
@@ -272,9 +279,9 @@ const useWebamp = (id: string): Webamp => {
       id,
       linkElement,
       mkdirRecursive,
-      onClose,
       onDrop,
       onMinimize,
+      onWillClose,
       position,
       process,
       readFile,
@@ -284,6 +291,10 @@ const useWebamp = (id: string): Webamp => {
       writeFile,
     ]
   );
+
+  useEffect(() => {
+    if (closing) onWillClose();
+  }, [closing, onWillClose]);
 
   return {
     initWebamp,

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { ComponentProcessProps } from "components/system/Apps/RenderComponent";
 import StyledPeekViewport from "components/system/Taskbar/TaskbarEntry/Peek/StyledPeekViewport";
 import RndWindow from "components/system/Window/RndWindow";
@@ -7,14 +8,14 @@ import useFocusable from "components/system/Window/useFocusable";
 import useWindowTransitions from "components/system/Window/useWindowTransitions";
 import { useProcesses } from "contexts/process";
 import { useSession } from "contexts/session";
-import { useCallback } from "react";
 
 const Window: FC<ComponentProcessProps> = ({ children, id }) => {
   const {
     linkElement,
     processes: { [id]: process },
   } = useProcesses();
-  const { backgroundColor, Component, peekElement } = process || {};
+  const { backgroundColor, Component, hideTitlebar, peekElement } =
+    process || {};
   const { foregroundId } = useSession();
   const isForeground = id === foregroundId;
   const { zIndex, ...focusableProps } = useFocusable(id);
@@ -37,7 +38,7 @@ const Window: FC<ComponentProcessProps> = ({ children, id }) => {
         {...windowTransitions}
       >
         <StyledPeekViewport ref={linkViewportEntry}>
-          <Titlebar id={id} />
+          {!hideTitlebar && <Titlebar id={id} />}
           {children}
         </StyledPeekViewport>
       </StyledWindow>
