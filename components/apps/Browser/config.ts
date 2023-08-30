@@ -8,24 +8,24 @@ type Bookmark = {
 
 export const bookmarks: Bookmark[] = [
   {
-    icon: "/System/Icons/Favicons/google.webp",
+    icon: "/System/Icons/Favicons/jamesmorgan.webp",
     name: "Old School Website",
     url: "https://jamesmorgan.in",
   },
   {
-    icon: "/System/Icons/Favicons/google.webp",
+    icon: "/System/Icons/Favicons/dustin.webp",
     name: "DustinBrett's DaedalOS",
     url: "https://jamesmorgan.ca",
   },
   {
-    icon: "/System/Icons/Favicons/google.webp",
+    icon: "/System/Icons/Favicons/actitime.webp",
     name: "Time Server",
     url: "https://time.jamesmorgan.ca",
   },
   {
-    icon: "/System/Icons/Favicons/google.webp",
-    name: "jamesmorgan.ca",
-    url: "https://hut8.io",
+    icon: "/System/Icons/Favicons/HUT.webp",
+    name: "Hut8 HPC",
+    url: "https://hut8.io/high-performance-computing/",
   },
   {
     icon: "/System/Icons/Favicons/google.webp",
