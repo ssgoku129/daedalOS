@@ -30,7 +30,7 @@ export const bookmarks: Bookmark[] = [
   {
     icon: "/System/Icons/Favicons/google.webp",
     name: "Google",
-    url: "https://www.google.com/webhp?igu=1",
+    url: "https://www.google.ca/webhp?igu=1",
   },
   {
     icon: "/System/Icons/Favicons/wikipedia.webp",
@@ -64,4 +64,4 @@ export const bookmarks: Bookmark[] = [
   },
 ];
 
-export const HOME_PAGE = "https://www.google.com/webhp?igu=1";
+export const HOME_PAGE = "https://jamesmorgan.in";
