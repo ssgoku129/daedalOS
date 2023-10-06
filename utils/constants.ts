@@ -379,13 +379,13 @@ export const DEFAULT_SCROLLBAR_WIDTH = 17;
 export const TASKBAR_HEIGHT = 30;
 
 export const PACKAGE_DATA = {
-  alias: "daedalOS",
+  alias: "James Morgan IT Solutions",
   author: {
-    email: "dustinbrett@gmail.com",
-    name: "Dustin Brett",
-    url: "https://dustinbrett.com",
+    email: "contact@jamesmorgan.ca",
+    name: "James Morgan",
+    url: "https://jamesmorgan.ca",
   },
-  description: "Desktop environment in the browser",
+  description: "James Morgan - an experienced IT specialist offering bespoke contract services. Proudly showcasing DaedalOS, a cutting-edge desktop environment within a browser. For an optimal viewing experience, open the browser app within the DaedalOS environment for more information about myself and the services I am used to offering.",
   license: "MIT",
   version: "2.0.0",
 };
