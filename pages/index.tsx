@@ -17,8 +17,11 @@ const Index = (): React.ReactElement => {
   return (
     <>
       <Head>
-        <title>James Morgan IT Solutions</title>
-        <meta name="description" content="James Morgan - an experienced IT specialist offering bespoke contract services. Proudly showcasing DaedalOS, a cutting-edge desktop environment within a browser. For an optimal viewing experience, open the browser app within the DaedalOS environment for more information about myself and the services I am used to offering." />
+        <title>James Morgan - IT Specialist</title>
+        <meta 
+          name="description" 
+          content="James Morgan - an experienced IT specialist offering bespoke contract services. Proudly showcasing DaedalOS, a cutting-edge desktop environment within a browser. For an optimal viewing experience, open the browser app within the DaedalOS environment for more information about myself and the services I am used to offering." 
+        />
       </Head>
       <Desktop>
         <Taskbar />
