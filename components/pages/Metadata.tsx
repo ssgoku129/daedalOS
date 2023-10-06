@@ -139,7 +139,7 @@ const Metadata: FC = () => {
         content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
         name="viewport"
       />
-      <meta name="description" content="James Morgan - an experienced IT specialist offering bespoke contract services. Proudly showcasing DaedalOS, a cutting-edge desktop environment within a browser. For an optimal viewing experience, open the browser app within the DaedalOS environment for more information about myself and the services I am used to offering." />
+      <meta content={description} name="description" />
       <MemoizedPreloadDesktopIcons />
       {customCursor && (
         <style>{`*, *::before, *::after { cursor: url(${customCursor}), default !important; }`}</style>
