@@ -6,7 +6,7 @@ import useGlobalErrorHandler from "hooks/useGlobalErrorHandler";
 import useGlobalKeyboardShortcuts from "hooks/useGlobalKeyboardShortcuts";
 import useIFrameFocuser from "hooks/useIFrameFocuser";
 import useUrlLoader from "hooks/useUrlLoader";
-import Head from 'next/head';
+import Head from "next/head";
 
 const Index = (): React.ReactElement => {
   useIFrameFocuser();
