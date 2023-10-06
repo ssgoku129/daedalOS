@@ -1,6 +1,6 @@
-## 🌌 **daedalOS** 🌌
+## 🌌 **James Morgan IT Solutions** 🌌
 
-## _Desktop environment in the browser_
+## _James Morgan - an experienced IT specialist offering bespoke contract services. Proudly showcasing DaedalOS, a cutting-edge desktop environment within a browser. For more information about what I do, open the browser app within the DaedalOS environment._
 
 [![Feature Overview](https://img.youtube.com/vi/CkvKPspIPLs/mqdefault.jpg)](http://www.youtube.com/watch?v=CkvKPspIPLs)
 
