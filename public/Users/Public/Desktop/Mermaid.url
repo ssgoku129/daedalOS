@@ -1,6 +1,3 @@
 [InternetShortcut]
-BaseURL=Firefox
-Comment=Shows the contents of the root folder.
-IconFile=/System/Icons/pc.webp
-Type=System
 URL=https://mermaid.jamesmorgan.ca
+IconFile=/System/Icons/pc.webp
