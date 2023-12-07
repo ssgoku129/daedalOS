@@ -1,3 +1,5 @@
 [InternetShortcut]
+BaseURL=Browser
 URL=https://mermaid.jamesmorgan.ca
-IconFile=/System/Icons/pc.webp
+Comment=Access the Internet
+IconFile=/System/Icons/chromium.webp
