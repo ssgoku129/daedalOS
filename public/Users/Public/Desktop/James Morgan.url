@@ -1,6 +1,6 @@
 [InternetShortcut]
 BaseURL=Browser
 Comment=Access James Morgan IT Solutions.
-IconFile=/System/Icons/chromium.webp  ; You might need to specify a different icon if this one is not available
+IconFile=/System/Icons/chromium.webp
 Type=System
 URL=https://jamesmorgan.ca
